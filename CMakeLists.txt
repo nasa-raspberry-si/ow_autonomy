@@ -12,6 +12,8 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   ow_lander
   ow_faults
+  std_msgs
+  message_generation
 )
 
 list(INSERT CMAKE_MODULE_PATH 0
@@ -19,9 +21,16 @@ list(INSERT CMAKE_MODULE_PATH 0
 
 find_package(PLEXIL REQUIRED)
 
-#generate_messages(
-#  DEPENDENCIES actionlib_msgs geometry_msgs
-#)
+
+add_message_files(
+  FILES
+  NewPlan.msg
+  PlanStatus.msg
+)
+
+generate_messages(
+  DEPENDENCIES actionlib_msgs geometry_msgs std_msgs
+)
 
 
 ###################################
@@ -30,7 +39,7 @@ find_package(PLEXIL REQUIRED)
 
 catkin_package(
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS roscpp roslib ow_lander actionlib_msgs geometry_msgs ow_faults
+  CATKIN_DEPENDS roscpp roslib ow_lander actionlib_msgs geometry_msgs ow_faults message_runtime
   CFG_EXTRAS ow_autonomy-extras.cmake
 )
 

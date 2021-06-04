@@ -24,6 +24,8 @@ class OwExecutive
 
   bool initialize ();
   bool runPlan (const std::string& filename);
+  bool stopResetExec();
+  bool restartExecAppInterface();
 
  private:
   static OwExecutive* m_instance;

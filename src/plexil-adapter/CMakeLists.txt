@@ -36,11 +36,20 @@ add_dependencies(${LIB_NAME}
   ${catkin_EXPORTED_TARGETS})
 
 add_executable(autonomy_node autonomy_node.cpp)
+add_executable(planner_node planner_node.cpp)
 
 target_link_libraries(autonomy_node
   ${catkin_LIBRARIES}
   ${PLEXIL_LIBRARIES}
   ${LIB_NAME})
 
-install(TARGETS autonomy_node
+target_link_libraries(planner_node
+  ${catkin_LIBRARIES})
+
+add_dependencies(planner_node
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS})
+
+
+install(TARGETS autonomy_node planner_node
         RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})

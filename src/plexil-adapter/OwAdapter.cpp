@@ -25,6 +25,7 @@
 // C++
 #include <map>
 #include <mutex>
+#include <fstream> // for debug
 using std::string;
 using std::vector;
 
@@ -138,6 +139,18 @@ static bool lookup (const std::string& state_name,
   }
   else if (state_name == "PowerFault") {
     value_out = OwInterface::instance()->powerFault();
+  }
+  // Automonoy Testing
+  else if (state_name == "TimeNow") {
+    value_out = OwInterface::instance()->getTimeNow();
+  }
+  else if (state_name == "RandomProbability") {
+    value_out = OwInterface::instance()->getRandomProb();
+  }
+  else if (state_name == "DiggingSuccess") {
+    double exca_prob;
+    args[0].getValue(exca_prob);
+    value_out = OwInterface::instance()->getDiggingSuccess (exca_prob);
   }
   else retval = false;
 
@@ -479,6 +492,8 @@ bool OwAdapter::initialize()
   g_configuration->registerCommandHandler("tilt_antenna", tilt_antenna);
   g_configuration->registerCommandHandler("pan_antenna", pan_antenna);
   g_configuration->registerCommandHandler("take_picture", take_picture);
+ 
+  g_configuration->registerPlannerUpdateHandler(OwAdapter::myPlannerUpdate);
 
   TheAdapter = this;
   setSubscriber (receiveBool);
@@ -521,7 +536,48 @@ void OwAdapter::invokeAbort(Command *cmd)
 }
 
 
+
 ///////////////////////////// State support //////////////////////////////////
+
+/*
+void OwAdapter::sendPlannerUpdate(Update *update)
+{
+  std::ofstream myfile;
+  myfile.open ("/home/jsu/called_sendPlannerUpdate.txt");
+  myfile << "Writing this to a file.\n";
+  myfile.close();
+
+  const PairValueMap& plan_status = update->getPairs();
+  string plan_name;
+  bool exec_status;
+  plan_status["plan_name"].getValue(plan_name);
+  plan_status["exec_status"].getValue(exec_status);
+
+  debugMsg("OwAdapter:sendPlannerupdate", " from the plan (" << plan_name << ") that " << (exec_status ? "succeeded." : "failed."));
+  ROS_INFO("[OwAdapter:SendPlannerupdate]: %s: %s", plan_name, (exec_status ? "succeeded." : "failed."));
+
+  OwInterface::instance()->updatePlexilPlanStatus(plan_name, exec_status);
+
+}
+*/
+
+void OwAdapter::myPlannerUpdate (PLEXIL::Update* update, PLEXIL::AdapterExecInterface* exec)
+{
+
+  const PairValueMap& plan_status = update->getPairs();
+  string plan_name;
+  bool exec_status;
+  plan_status["plan_name"].getValue(plan_name);
+  plan_status["exec_status"].getValue(exec_status);
+
+  debugMsg("OwAdapter:myPlannerUpdate", " from the plan (" << plan_name << ") that " << (exec_status ? "succeeded." : "failed."));
+  ROS_INFO("[OwAdapter:myPlannerUpdate]: %s: %s", plan_name.c_str(), (exec_status ? "succeeded." : "failed."));
+
+  // Transition the Update node to be finished
+  exec->handleUpdateAck (update, true);
+
+  OwInterface::instance()->updatePlexilPlanStatus(plan_name, exec_status);
+}
 
 void OwAdapter::lookupNow (const State& state, StateCacheEntry& entry)
 {

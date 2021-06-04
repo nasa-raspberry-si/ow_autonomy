@@ -32,6 +32,8 @@
 #include <ow_faults/PowerFaults.h>
 #include <ow_faults/PTFaults.h>
 
+#include <ow_autonomy/NewPlan.h>
+
 using UnstowActionClient =
   actionlib::SimpleActionClient<ow_lander::UnstowAction>;
 using StowActionClient =
@@ -59,6 +61,7 @@ void default_action_done_cb
 // Maps from fault name to the pair (fault value, is fault in progress?)
 using FaultMap32 = std::map<std::string,std::pair<uint32_t, bool>>;
 using FaultMap64 = std::map<std::string,std::pair<uint64_t, bool>>;
+
 
 class OwInterface
 {
@@ -89,6 +92,7 @@ class OwInterface
   void deliver (double x, double y, double z, int id);
   void takePanorama (double elev_lo, double elev_hi,
                      double lat_overlap, double vert_overlap);
+  void updatePlexilPlanStatus(std::string& plan_name, bool exec_status);
 
   // State/Lookup interface
   double getTilt () const;
@@ -100,10 +104,15 @@ class OwInterface
   double getBatteryTemperature () const;
   bool   groundFound () const;
   double groundPosition () const;
+
   bool   systemFault () const;
   bool   antennaFault () const;
   bool   armFault () const;
   bool   powerFault () const;
+
+  double getTimeNow() const;
+  double getRandomProb() const;
+  bool getDiggingSuccess(const double exca_prob) const;
 
   // Is the given operation (as named in .cpp file) running?
   bool running (const std::string& name) const;
@@ -113,6 +122,12 @@ class OwInterface
 
   // Command feedback
   void setCommandStatusCallback (void (*callback) (int, bool));
+
+  // Support re-planning
+  bool getHasNewPlan();
+  void setHasNewPlan(bool has_new_plan);
+  std::string getPlanName();
+  void setPlanName(std::string plan_name);
 
 
  private:
@@ -144,6 +159,7 @@ class OwInterface
                       double position, double velocity,
                       double current, double goal,
                       const ros::Time& start);
+
   void systemFaultMessageCallback (const ow_faults::SystemFaults::ConstPtr&);
   void armFaultCallback (const ow_faults::ArmFaults::ConstPtr&);
   void powerFaultCallback (const ow_faults::PowerFaults::ConstPtr&);
@@ -184,6 +200,8 @@ class OwInterface
     {"JOINT_LIMIT_ERROR", std::make_pair(2, false)}
   };
 
+  void new_plan_callback(const ow_autonomy::NewPlan new_plan);
+
   static OwInterface* m_instance;
   ros::NodeHandle* m_genericNodeHandle;
 
@@ -192,6 +210,7 @@ class OwInterface
   ros::Publisher*  m_antennaTiltPublisher;
   ros::Publisher*  m_antennaPanPublisher;
   ros::Publisher*  m_leftImageTriggerPublisher;
+  ros::Publisher*  m_plexilPlanStatusPublisher;
 
   ros::Subscriber* m_antennaPanSubscriber;
   ros::Subscriber* m_antennaTiltSubscriber;
@@ -199,11 +218,15 @@ class OwInterface
   ros::Subscriber* m_cameraSubscriber;
   ros::Subscriber* m_socSubscriber;
   ros::Subscriber* m_rulSubscriber;
+
   ros::Subscriber* m_batteryTempSubscriber;
   std::unique_ptr<ros::Subscriber> m_systemFaultMessagesSubscriber;
   std::unique_ptr<ros::Subscriber> m_armFaultMessagesSubscriber;
   std::unique_ptr<ros::Subscriber> m_powerFaultMessagesSubscriber;
   std::unique_ptr<ros::Subscriber> m_ptFaultMessagesSubscriber;
+
+  ros::Subscriber* m_guardedMoveSubscriber;
+  ros::Subscriber* m_newPlanSubscriber;
 
   // Action clients
   std::unique_ptr<GuardedMoveActionClient> m_guardedMoveClient;
@@ -218,6 +241,11 @@ class OwInterface
   double m_currentPan, m_currentTilt;
   double m_goalPan, m_goalTilt;      // commanded pan/tilt values
   ros::Time m_panStart, m_tiltStart; // pan/tilt start times
+
+  // Re-planning support
+  bool m_has_new_plan;
+  std::string m_plan_name;
+
 };
 
 #endif

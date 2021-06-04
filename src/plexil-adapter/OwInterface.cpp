@@ -11,12 +11,18 @@
 #include <std_msgs/Float64.h>
 #include <std_msgs/Int16.h>
 #include <std_msgs/Empty.h>
+#include <sensor_msgs/Image.h>
+#include <std_msgs/Bool.h>
+
+#include <ow_autonomy/PlanStatus.h>
 
 // C++
 #include <set>
 #include <map>
 #include <thread>
 #include <functional>
+#include <random>
+
 using std::set;
 using std::map;
 using std::thread;
@@ -38,6 +44,12 @@ static bool within_tolerance (double val1, double val2, double tolerance)
 {
   return fabs (val1 - val2) <= tolerance;
 }
+
+// Random number generator: [0, 1)
+std::random_device rd; // Will be used to obtain a seed for the random number engine
+std::mt19937 generator(rd()); // //Standard mersenne_twister_engine seeded with rd()
+std::uniform_real_distribution<> distZeroOne(0, 1);// Uniform distribution between 0 and 1
+
 
 
 //////////////////// Lander Operation Support ////////////////////////
@@ -302,6 +314,19 @@ void OwInterface::managePanTilt (const string& opname,
   }
 }
 
+////////////////////////////// Adaptation Support //////////////////////////////
+void OwInterface::new_plan_callback(const ow_autonomy::NewPlan new_plan)
+{
+  setHasNewPlan(new_plan.has_new_plan);
+  setPlanName(new_plan.plan_name);
+  
+  /*
+  if (new_plan.has_new_plan) {
+    ROS_INFO("[Autonomy Node : OwInterface : new_plan_callback] A new plan (%s) is ready for execution.", new_plan.plan_name.c_str());
+    // Execute the new PLEXIL plan
+  }
+  */
+}
 
 ///////////////////////// Antenna/Camera Support ///////////////////////////////
 
@@ -460,6 +485,7 @@ OwInterface::OwInterface ()
     m_antennaTiltPublisher (nullptr),
     m_antennaPanPublisher (nullptr),
     m_leftImageTriggerPublisher (nullptr),
+    m_plexilPlanStatusPublisher (nullptr),
     m_antennaTiltSubscriber (nullptr),
     m_antennaPanSubscriber (nullptr),
     m_jointStatesSubscriber (nullptr),
@@ -473,8 +499,11 @@ OwInterface::OwInterface ()
     m_ptFaultMessagesSubscriber (nullptr),
 
     m_currentPan (0), m_currentTilt (0),
-    m_goalPan (0), m_goalTilt (0)
+    m_goalPan (0), m_goalTilt (0),
     // m_panStart, m_tiltStart are deliberately uninitialized
+
+    m_newPlanSubscriber (nullptr),
+    m_has_new_plan (false), m_plan_name("Europa")
 {
 }
 
@@ -490,6 +519,7 @@ OwInterface::~OwInterface ()
   if (m_socSubscriber) delete m_socSubscriber;
   if (m_rulSubscriber) delete m_rulSubscriber;
   if (m_batteryTempSubscriber) delete m_batteryTempSubscriber;
+  if (m_newPlanSubscriber) delete m_newPlanSubscriber;
   if (m_instance) delete m_instance;
 }
 
@@ -514,6 +544,9 @@ void OwInterface::initialize()
     m_leftImageTriggerPublisher = new ros::Publisher
       (m_genericNodeHandle->advertise<std_msgs::Empty>
        ("/StereoCamera/left/image_trigger", qsize, latch));
+    m_plexilPlanStatusPublisher = new ros::Publisher
+      (m_genericNodeHandle->advertise<ow_autonomy::PlanStatus>
+       ("/PlexilPlanExecutionStatus", qsize, latch));
 
     // Initialize subscribers
 
@@ -560,6 +593,12 @@ void OwInterface::initialize()
       (m_genericNodeHandle ->
        subscribe("/faults/pt_faults_status", qsize,
                 &OwInterface::antennaFaultCallback, this)));
+    // subscribers for plan status
+    m_newPlanSubscriber = new ros::Subscriber
+      (m_genericNodeHandle ->
+       subscribe("/NewPlan", qsize,
+	       &OwInterface::new_plan_callback, this));
+
 
     m_guardedMoveClient.reset(new GuardedMoveActionClient(Op_GuardedMove, true));
     m_unstowClient.reset(new UnstowActionClient(Op_Unstow, true));
@@ -587,6 +626,7 @@ void OwInterface::initialize()
     if (! m_guardedMoveClient->waitForServer(ros::Duration(ActionServerTimeout))) {
       ROS_ERROR ("GuardedMove action server did not connect!");
     }
+
   }
 }
 
@@ -870,6 +910,33 @@ double OwInterface::getBatteryTemperature () const
   return BatteryTemperature;
 }
 
+double OwInterface::getTimeNow () const
+{
+  return ros::Time::now().toSec();
+}
+
+double OwInterface::getRandomProb () const
+{       
+  return distZeroOne(generator);
+}
+
+bool OwInterface::getDiggingSuccess (const double exca_prob) const
+{
+  double rand_prob = getRandomProb();
+  bool success = false;
+  if (rand_prob <= exca_prob) {
+    success = true;
+  }
+
+  if (success) {
+    ROS_INFO("[Digging Success] Excavatability Probability (%f) >= Randomly Drawn Number (%f).", exca_prob, rand_prob);
+  } else {
+    ROS_INFO("[Digging Failure] Excavatability Probability (%f) < Randomly Drawn Number (%f).", exca_prob, rand_prob);
+  }
+
+  return success;
+}
+
 bool OwInterface::operationRunning (const string& name) const
 {
   // Note: check in caller guarantees 'at' to return a valid value.
@@ -895,3 +962,36 @@ bool OwInterface::softTorqueLimitReached (const std::string& joint_name) const
   return (JointsAtSoftTorqueLimit.find (joint_name) !=
           JointsAtSoftTorqueLimit.end());
 }
+
+// Support re-planning
+void OwInterface::updatePlexilPlanStatus(std::string& plan_name, bool exec_status)
+{
+  ow_autonomy::PlanStatus msg;
+  msg.plan_status = exec_status;
+  msg.plan_name = plan_name;
+  ROS_INFO ("[Autonomy Node : OwInterface : updatePlexilPlanStatus]  Executation status of the plan (%s): %s",
+		  plan_name.c_str(),
+		  exec_status ? "true" : "false");
+  m_plexilPlanStatusPublisher->publish (msg);
+}
+
+bool OwInterface::getHasNewPlan()
+{
+  return m_has_new_plan;
+}
+
+void OwInterface::setHasNewPlan(bool has_new_plan)
+{
+  m_has_new_plan = has_new_plan;
+}
+
+std::string OwInterface::getPlanName()
+{
+  return m_plan_name;
+}
+
+void OwInterface::setPlanName(std::string plan_name)
+{
+  m_plan_name = plan_name;
+}
+
