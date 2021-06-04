@@ -51,6 +51,17 @@ OwExecutive::~OwExecutive()
   if (m_instance) delete m_instance;
 }
 
+// Stop and reset the executing plan
+// and make sure the Plexil executor is ready for the next plan
+bool OwExecutive::stopResetExec()
+{
+  // State of Exec APP: APP_RUNNING -> APP_STOP
+  bool isStopped = PlexilApp->stop();
+  // State of Exec APP: APP_STOP -> APP_INIT
+  bool isReset = PlexilApp->reset();
+  return (isStopped && isReset);
+}
+
 bool OwExecutive::runPlan (const string& filename)
 {
   string plan = (PlexilDir + filename);
@@ -179,7 +190,38 @@ bool OwExecutive::initialize ()
       ROS_ERROR("Stepping exec failed");
       return false;
     }
-		PlexilApp->addLibraryPath (PlexilDir);
+
+    PlexilApp->addLibraryPath (PlexilDir);
+  }
+  catch (const Error& e) {
+    ostringstream s;
+    s << "Exec init error: " << e;
+    ROS_ERROR("%s", s.str().c_str());
+    return false;
+  }
+  return true;
+}
+
+// Ensure that the state of the Exec Application is APP_INIT
+// before calling this function.
+//
+// Currently, only call this function after calling stopResetExec()
+//
+// After calling this function successfully, the state of Exec
+// Application is APP_READY such that a new plan could be executed.
+bool OwExecutive::restartExecAppInterface ()
+{
+  try {
+
+    if (!PlexilApp->startInterfaces()) {
+      ROS_ERROR("Interface startup failed");
+      return false;
+    }
+    if (!PlexilApp->step()) {
+      ROS_ERROR("Stepping exec failed");
+      return false;
+    }
+
   }
   catch (const Error& e) {
     ostringstream s;

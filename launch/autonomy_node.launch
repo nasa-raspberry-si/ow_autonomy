@@ -11,4 +11,8 @@
         name="GuardedMoveServer"
         type="GuardedMoveServer"
         output="screen" />
+  <node pkg="ow_autonomy"
+        name="planner_node"
+        type="planner_node"
+        output="screen" />
 </launch>

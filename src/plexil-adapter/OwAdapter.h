@@ -11,6 +11,8 @@
 #include "Command.hh"
 #include "InterfaceAdapter.hh"
 #include "Value.hh"
+#include "SimpleMap.hh"
+#include "Update.hh"
 
 #include <set>
 
@@ -19,6 +21,8 @@ using namespace PLEXIL;
 class OwAdapter : public InterfaceAdapter
 {
 public:
+  typedef SimpleMap<std::string, Value> PairValueMap;
+
   // No default constructor, only this specialized one.
   OwAdapter (AdapterExecInterface&, const pugi::xml_node&);
   ~OwAdapter ();
@@ -34,6 +38,9 @@ public:
   virtual void lookupNow (State const& state, StateCacheEntry &entry);
   virtual void subscribe(const State& state);
   virtual void unsubscribe(const State& state);
+  //virtual void sendPlannerUpdate(Update *update);
+
+  static void myPlannerUpdate (PLEXIL::Update* update, PLEXIL::AdapterExecInterface* exec);
   void propagateValueChange (const State&, const std::vector<Value>&) const;
 
 private:

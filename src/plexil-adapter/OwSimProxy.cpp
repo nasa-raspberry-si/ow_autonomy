@@ -101,6 +101,20 @@ bool OwSimProxy::lookup (const std::string& state_name,
   else if (state_name == "GroundPosition") {
     value_out = OwInterface::instance()->groundPosition();
   }
+  else if (state_name == "RemainingUsefulLife") {
+    value_out = OwInterface::instance()->getRemainingUsefulLife();
+  }
+  else if (state_name == "TimeNow") {
+    value_out = OwInterface::instance()->getTimeNow();
+  }
+  else if (state_name == "RandomProbability") {
+    value_out = OwInterface::instance()->getRandomProb();
+  }
+  else if (state_name == "DiggingSuccess") {
+    double exca_prob;
+    args[0].getValue(exca_prob);
+    value_out = OwInterface::instance()->getDiggingSuccess (exca_prob);
+  }
   else retval = false;
 
   return retval;

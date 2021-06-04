@@ -17,6 +17,8 @@
 #include <geometry_msgs/Point.h>
 #include <string>
 
+#include <ow_autonomy/NewPlan.h>
+
 using GuardedMoveActionClient = actionlib::SimpleActionClient<ow_autonomy::GuardedMoveAction>;
 
 class OwInterface
@@ -50,6 +52,7 @@ class OwInterface
   void deliverSample (double x, double y, double z, int id);
   void takePanorama (double elev_lo, double elev_hi,
                      double lat_overlap, double vert_overlap);
+  void updatePlexilPlanStatus(std::string& plan_name, bool exec_status);
 
   // Temporary, proof of concept for ROS Actions
   void guardedMoveActionDemo (const geometry_msgs::Point& start,
@@ -67,6 +70,9 @@ class OwInterface
   double getRemainingUsefulLife () const;
   bool   groundFound () const;
   double groundPosition () const;
+  double getTimeNow() const;
+  double getRandomProb() const;
+  bool getDiggingSuccess(const double exca_prob) const;
 
   // These methods apply to all "lander operations", and hide their ROS
   // implementation, which could be services, actions, or ad hoc messaging.
@@ -77,6 +83,12 @@ class OwInterface
 
   // Command feedback
   void setCommandStatusCallback (void (*callback) (int, bool));
+
+  // Support re-planning
+  bool getHasNewPlan();
+  void setHasNewPlan(bool has_new_plan);
+  std::string getPlanName();
+  void setPlanName(std::string plan_name);
 
 
  private:
@@ -96,6 +108,7 @@ class OwInterface
                       double position, double velocity,
                       double current, double goal,
                       const ros::Time& start);
+  void new_plan_callback(const ow_autonomy::NewPlan new_plan);
 
   static OwInterface* m_instance;
   ros::NodeHandle* m_genericNodeHandle;
@@ -105,6 +118,7 @@ class OwInterface
   ros::Publisher*  m_antennaTiltPublisher;
   ros::Publisher*  m_antennaPanPublisher;
   ros::Publisher*  m_leftImageTriggerPublisher;
+  ros::Publisher*  m_plexilPlanStatusPublisher;
 
   ros::Subscriber* m_antennaPanSubscriber;
   ros::Subscriber* m_antennaTiltSubscriber;
@@ -113,6 +127,7 @@ class OwInterface
   ros::Subscriber* m_socSubscriber;
   ros::Subscriber* m_rulSubscriber;
   ros::Subscriber* m_guardedMoveSubscriber;
+  ros::Subscriber* m_newPlanSubscriber;
 
   // Action clients
   std::unique_ptr<GuardedMoveActionClient> m_guardedMoveClient;
@@ -121,6 +136,11 @@ class OwInterface
   double m_currentPan, m_currentTilt;
   double m_goalPan, m_goalTilt;      // commanded pan/tilt values
   ros::Time m_panStart, m_tiltStart; // pan/tilt start times
+
+  // Re-planning support
+  bool m_has_new_plan;
+  std::string m_plan_name;
+
 };
 
 #endif

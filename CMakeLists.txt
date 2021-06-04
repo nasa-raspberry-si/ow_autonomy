@@ -11,6 +11,8 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib_msgs
   geometry_msgs
   ow_lander
+  std_msgs
+  message_generation
 )
 
 list(INSERT CMAKE_MODULE_PATH 0
@@ -23,8 +25,14 @@ add_action_files(
   FILES GuardedMove.action
   )
 
+add_message_files(
+  FILES
+  NewPlan.msg
+  PlanStatus.msg
+)
+
 generate_messages(
-  DEPENDENCIES actionlib_msgs geometry_msgs
+  DEPENDENCIES actionlib_msgs geometry_msgs std_msgs
 )
 
 
@@ -33,7 +41,7 @@ generate_messages(
 ###################################
 
 catkin_package(
-  CATKIN_DEPENDS roscpp roslib ow_lander actionlib_msgs geometry_msgs
+  CATKIN_DEPENDS roscpp roslib ow_lander actionlib_msgs geometry_msgs message_runtime
   CFG_EXTRAS ow_autonomy-extras.cmake
 )
 
