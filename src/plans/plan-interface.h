@@ -102,4 +102,9 @@ Integer Lookup NumberOfUnhandledBoots;
 Boolean Lookup IsBootOK(Integer);
 Boolean Lookup DidCrash;
 
+// Testing Autonomy
+Boolean Lookup DiggingSuccess(Real);
+Real Lookup RandomProbability();
+Real Lookup TimeNow();
+
 #endif

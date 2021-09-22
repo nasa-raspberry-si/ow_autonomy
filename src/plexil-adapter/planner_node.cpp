@@ -21,15 +21,22 @@ std::string plan_name = "Exca";
 std::string new_plan_name = "Exca1";
 int new_plan_numeric_id = 1;
 
-void planning(std::string plan_name)
+// TBD: (for temporary testing)
+double getRandomFaultyExProb()
 {
-    // NOTE: this is the best we can do for now.
-    std::string synPlanDir = ros::package::getPath("ow_autonomy") + "/syn-plan/";
+  // return a random number in [0, 1]
+  return ((double) rand() / (RAND_MAX));
+}
 
-    std::string cmd = synPlanDir + "/run.bash";
-    std::string args = plan_name;
-    std::string cmd_args = cmd + " " + args;
-    system(cmd_args.c_str());
+void planning(std::string plan_name, double faulty_ex_prob)
+{
+  // NOTE: this is the best we can do for now.
+  std::string synPlanDir = ros::package::getPath("ow_autonomy") + "/syn-plan/";
+
+  std::string cmd = synPlanDir + "/run.bash";
+  std::string args = plan_name + " " + std::to_string(faulty_ex_prob);
+  std::string cmd_args = cmd + " " + args;
+  system(cmd_args.c_str());
 }
 
 void planStatusSubCallback(const ow_autonomy::PlanStatus plan_status)
@@ -43,8 +50,11 @@ void planStatusSubCallback(const ow_autonomy::PlanStatus plan_status)
     ROS_INFO ("[Planner Node : PlanStatusSubCallback] %s Plan failed", plan_status.plan_name.c_str());
     new_plan_numeric_id++;
     new_plan_name = plan_name + std::to_string(new_plan_numeric_id);
-    planning(new_plan_name);
-   //system("/home/jsu/Projects/oceanwaters_ws/src/ow_autonomy/syn-plan/run.bash"); 
+
+    // TBD: (for temporary testing)
+    double faulty_ex_prob = getRandomFaultyExProb();
+
+    planning(new_plan_name, faulty_ex_prob);
 
     ROS_INFO ("[Planner Node : planStatusSubCallabck] Re-planning is done");
     has_new_plan = true;
@@ -67,7 +77,11 @@ int main(int argc, char* argv[])
                                                          3,
 							 planStatusSubCallback);
   // For the initial plan
-  planning(new_plan_name);
+
+  // TBD: (for temporary testing)
+  double faulty_ex_prob = getRandomFaultyExProb();
+
+  planning(new_plan_name, faulty_ex_prob);
   has_new_plan = true;
 
   ros::Rate rate(1); // 1 Hz seems appropriate, for now.
