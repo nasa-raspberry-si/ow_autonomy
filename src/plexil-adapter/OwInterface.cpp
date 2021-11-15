@@ -928,10 +928,11 @@ bool OwInterface::getDiggingSuccess (const double exca_prob) const
     success = true;
   }
 
+  ROS_INFO("[Simulated Digging Status] randomly draw a number between 0 and 1, if it is smaller or equal to the excavatability, the probability of successful excavation, then set it to be a digging success, otherwise, a digging failure.");
   if (success) {
-    ROS_INFO("[Digging Success] Excavatability Probability (%f) >= Randomly Drawn Number (%f).", exca_prob, rand_prob);
+    ROS_INFO("[Simulated Digging Status] [Success] random number (%f) <= excavatability (%f).", rand_prob, exca_prob);
   } else {
-    ROS_INFO("[Digging Failure] Excavatability Probability (%f) < Randomly Drawn Number (%f).", exca_prob, rand_prob);
+    ROS_INFO("[Simulated Digging Status] [Failure] random number (%f) > excavatability (%f).", rand_prob, exca_prob);
   }
 
   return success;
