@@ -19,9 +19,15 @@ See the `README.md` files in each subdirectory for more information.
 
 Build
 -----
-**Clone [syn-plan](https://github.com/nasa-raspberry-si/syn-plan) repo into a folder called 'syn-plan', and put the folder under the root directory of ow_autonomy (release 8) code base.**
 
-**When building with ow_simulator, modify the git information of the ow_autonomy repo in ow_simulator/oceanwaters/workspaces/oceanwaters.rosinstall before running `wstool update`.**
+### Prerequisite
+Clone [syn-plan](https://github.com/nasa-raspberry-si/syn-plan) repo into a folder called 'syn-plan', and put the folder under the root directory of ow_autonomy (release 8) code base.
+
+When building with ow_simulator, modify the git information of the ow_autonomy repo in ow_simulator/oceanwaters/workspaces/oceanwaters.rosinstall before running `wstool update`.
+
+   `git: { local-name: ow_autonomy, uri: 'git@github.com:nasa-raspberry-si/ow_autonomy.git', version: 'development'  }`
+
+### Original Build Steps
 
 See the "Getting Started" section in the parent repository's README.md file,
 viewable at https://github.com/nasa/ow_simulator, for complete installation and
