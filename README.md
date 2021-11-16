@@ -19,7 +19,7 @@ See the `README.md` files in each subdirectory for more information.
 
 Build
 -----
-**Need to clone syn-plan repo, save inside a fold called 'syn-plan', and put the fold 'syn-plam' in the root directory of ow_autonomy code base.**
+**Clone [syn-plan](https://github.com/nasa-raspberry-si/syn-plan) repo into a folder called 'syn-plan', and put the folder under the root directory of ow_autonomy (release 8) code base.**
 
 **When building with ow_simulator, modify the git information of the ow_autonomy repo in ow_simulator/oceanwaters/workspaces/oceanwaters.rosinstall before running `wstool update`.**
 
