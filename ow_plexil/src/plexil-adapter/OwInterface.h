@@ -105,9 +105,17 @@ class OwInterface : public PlexilInterface
   bool   antennaFault () const;
   bool   armFault () const;
   bool   powerFault () const;
+  bool   opState (const std::string& opname) const;
 
   bool hardTorqueLimitReached (const std::string& joint_name) const;
   bool softTorqueLimitReached (const std::string& joint_name) const;
+
+  bool terminatePlan () const;
+
+  // Status of a point in the running plexil plan
+  void updateCheckpointStatus(std::string& cp_type, std::string& cp_name, std::string& cp_status);
+  // Update the state of operations
+  void updateOpState (const std::string& opname, std::string opstate);
 
  private:
   void unstowAction (int id);
@@ -181,6 +189,8 @@ class OwInterface : public PlexilInterface
   std::unique_ptr<ros::Publisher> m_antennaTiltPublisher;
   std::unique_ptr<ros::Publisher> m_antennaPanPublisher;
   std::unique_ptr<ros::Publisher> m_leftImageTriggerPublisher;
+  std::unique_ptr<ros::Publisher> m_plexilPlanStatusPublisher;
+  std::unique_ptr<ros::Publisher> m_plexilOperationStatusPublisher;
 
   std::unique_ptr<ros::Subscriber> m_jointStatesSubscriber;
   std::unique_ptr<ros::Subscriber> m_cameraSubscriber;

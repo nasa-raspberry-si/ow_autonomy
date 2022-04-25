@@ -45,7 +45,7 @@ OwExecutive* OwExecutive::instance ()
 
 bool OwExecutive::getPlanState()
 {
-	return PlexilApp->allPlansFinished();
+  return PlexilApp->allPlansFinished();
 }
 
 bool OwExecutive::runPlan (const string& filename)
@@ -91,6 +91,15 @@ bool OwExecutive::runPlan (const string& filename)
   return true;
 }
 
+bool OwExecutive::suspendExec()
+{
+  return PlexilApp->suspend();
+}
+
+bool OwExecutive::resumeExec()
+{
+  return PlexilApp->resume();
+}
 
 // PLEXIL application setup functions start here.
 

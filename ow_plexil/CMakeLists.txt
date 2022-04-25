@@ -33,6 +33,12 @@ add_action_files(
   IdentifyLocation.action
 )
 
+add_message_files(
+  FILES
+  CurrentOperation.msg  
+  CurrentPlan.msg
+)
+
 ## for GUI
 catkin_python_setup()
 
@@ -51,6 +57,7 @@ generate_messages(
 catkin_package(
   LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS roscpp roslib rospy ow_lander actionlib_msgs geometry_msgs ow_faults
+  message_runtime
   CFG_EXTRAS ow_plexil-extras.cmake
 )
 
@@ -66,6 +73,8 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${PLEXIL_INCLUDE_DIR}
 )
+
+add_library(${PROJECT_NAME} src/ow_plexil.cpp)
 
 add_subdirectory(src)
 
@@ -89,3 +98,5 @@ install(FILES
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
+install(DIRECTORY include/${PROJECT_NAME}/
+        DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})

@@ -11,6 +11,8 @@
 #include "InterfaceAdapter.hh"
 #include "Command.hh"
 #include "Value.hh"
+#include "SimpleMap.hh"
+#include "Update.hh"
 
 #include <set>
 #include <map>
