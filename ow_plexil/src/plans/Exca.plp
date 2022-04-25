@@ -1,0 +1,53 @@
+#include "plan-interface.h"
+
+Exca:
+{
+	Boolean planSuccess;
+	String taskName;
+	String taskStatus;
+
+	log_info ("{'sel_xloc': {u'sci_val': 0.5322028060234025, u'position': {u'y': 0.1, u'x': 1.54}, u'ex_prob': 0.787118877590639, u'name': u'xloc1'}, 'sel_dloc': {u'position': {u'y': -0.1, u'x': 1.94}, u'name': u'dloc6'}, 'node_name': 'Exca'}");
+
+	log_info ("Unstowing arm...");
+	LibraryCall Unstow();
+
+	log_info ("A guarded move to find out the ground position of the location (x=1.54, y=0.1)...");
+	Update task_name="GuardedMove", task_status="starts";
+	LibraryCall GuardedMove (
+		X = 1.54, Y = 0.1, Z = 0.05,
+		DirX = 0, DirY = 0, DirZ = 1,
+		SearchDistance = 0.3);
+
+	planSuccess=Lookup(GroundFound);
+	if (planSuccess) {
+		log_info ("Start the excavation using the grind at {u'sci_val': 0.5322028060234025, u'position': {u'y': 0.1, u'x': 1.54}, u'ex_prob': 0.787118877590639, u'name': u'xloc1'}...");
+		Update task_name="Grind", task_status="starts";
+		LibraryCall Grind (
+			X = 1.54, Y = 0.1, Depth = 0.05,
+			Length = 0.2, Parallel = true,
+			GroundPos = Lookup(GroundPosition));
+		Update task_name="Grind", task_status="finishes with success";
+		log_info ("Digging successed!");
+
+		log_info ("Removing tailing...\n\tCollecting the tailing using the scoop...\n");
+		Update task_name="RemoveTailing", task_status="starts";
+		LibraryCall DigCircular (
+			X = 1.54, Y = 0.1, Depth = 0.05,
+			GroundPos = Lookup(GroundPosition),
+			Parallel = true);
+		Update task_name="RemoveTailing", task_status="in progress";
+
+		log_info ("\tMoving the tailing to {u'position': {u'y': -0.1, u'x': 1.94}, u'name': u'dloc6'}");
+		LibraryCall Deliver (X = 1.94, Y = -0.1, Z = 0.5);
+		Update task_name="RemoveTailing", task_status="finishes with success";
+
+	}
+	else {
+		log_error ("Failed to find ground: Skipping grind and dig.");
+		Update task_name="GuardedMove", task_status="finishes with failure";
+	}
+	endif
+
+
+	log_info ("Excavation is finished.");
+}

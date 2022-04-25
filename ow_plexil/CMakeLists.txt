@@ -33,6 +33,11 @@ add_action_files(
   IdentifyLocation.action
 )
 
+add_message_files(
+  FILES
+  CurrentTask.msg  
+)
+
 ## for GUI
 catkin_python_setup()
 
@@ -51,6 +56,7 @@ generate_messages(
 catkin_package(
   LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS roscpp roslib rospy ow_lander actionlib_msgs geometry_msgs ow_faults
+  message_runtime
   CFG_EXTRAS ow_plexil-extras.cmake
 )
 

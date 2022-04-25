@@ -109,6 +109,9 @@ class OwInterface : public PlexilInterface
   bool hardTorqueLimitReached (const std::string& joint_name) const;
   bool softTorqueLimitReached (const std::string& joint_name) const;
 
+  // PLEXIL plan status
+  void updateTaskStatus(std::string& task_name, std::string& task_current);
+
  private:
   void unstowAction (int id);
   void stowAction (int id);
@@ -181,6 +184,7 @@ class OwInterface : public PlexilInterface
   std::unique_ptr<ros::Publisher> m_antennaTiltPublisher;
   std::unique_ptr<ros::Publisher> m_antennaPanPublisher;
   std::unique_ptr<ros::Publisher> m_leftImageTriggerPublisher;
+  std::unique_ptr<ros::Publisher> m_plexilPlanStatusPublisher;
 
   std::unique_ptr<ros::Subscriber> m_jointStatesSubscriber;
   std::unique_ptr<ros::Subscriber> m_cameraSubscriber;

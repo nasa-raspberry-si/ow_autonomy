@@ -31,6 +31,8 @@ using std::vector;
 using std::unique_ptr;
 
 
+typedef SimpleMap<std::string, Value> PairValueMap;
+
 //////////////////////// PLEXIL Lookup Support //////////////////////////////
 
 static void stubbed_lookup (const string& name, const string& value)
@@ -301,6 +303,9 @@ bool OwAdapter::initialize()
   g_configuration->registerCommandHandler("identify_sample_location",
                                           identify_sample_location);
   g_configuration->registerCommandHandler("take_picture", take_picture);
+  
+  g_configuration->registerPlannerUpdateHandler(OwAdapter::planUpdate);
+
   OwInterface::instance()->setCommandStatusCallback (command_status_callback);
   debugMsg("OwAdapter", " initialized.");
   return true;
@@ -318,6 +323,26 @@ void OwAdapter::lookupNow (const State& state, StateCacheEntry& entry)
   }
   entry.update(retval);
 }
+
+void OwAdapter::planUpdate (PLEXIL::Update* update, PLEXIL::AdapterExecInterface* exec)
+{
+
+  const PairValueMap& current_task = update->getPairs();
+  string task_name;
+  string task_status;
+  current_task["task_name"].getValue(task_name);
+  current_task["task_status"].getValue(task_status);
+
+  debugMsg("OwAdapter:planUpdate", " task (" << task_name << ") : " << task_status);
+  ROS_INFO("[OwAdapter:planUpdate]: %s: %s", task_name.c_str(), task_status.c_str());
+
+  // Transition the Update node to be finished
+  exec->handleUpdateAck (update, true);
+
+  // Publish the status of the current task to a ROS topic
+  OwInterface::instance()->updateTaskStatus(task_name, task_status);
+}
+
 
 extern "C" {
   void initow_adapter() {

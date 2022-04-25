@@ -20,6 +20,8 @@ public:
 
   virtual bool initialize();
   virtual void lookupNow (const PLEXIL::State&, PLEXIL::StateCacheEntry&);
+
+  static void planUpdate (PLEXIL::Update* update, PLEXIL::AdapterExecInterface* exec);
 };
 
 extern "C" {

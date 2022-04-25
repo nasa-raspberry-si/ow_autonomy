@@ -14,5 +14,6 @@
   <Adapter AdapterType="ow_adapter">
     <DefaultCommandAdapter/>
     <DefaultLookupAdapter/>
+    <PlannerUpdate/>
   </Adapter>
 </Interfaces>

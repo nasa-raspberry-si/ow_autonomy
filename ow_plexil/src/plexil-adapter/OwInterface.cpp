@@ -6,6 +6,7 @@
 #include "OwInterface.h"
 #include "subscriber.h"
 #include "joint_support.h"
+#include <ow_plexil/CurrentTask.h>
 
 // ROS
 #include <std_msgs/Float64.h>
@@ -463,6 +464,9 @@ void OwInterface::initialize()
     m_leftImageTriggerPublisher = make_unique<ros::Publisher>
       (m_genericNodeHandle->advertise<std_msgs::Empty>
        ("/StereoCamera/left/image_trigger", qsize, latch));
+    m_plexilPlanStatusPublisher = make_unique<ros::Publisher>
+      (m_genericNodeHandle->advertise<ow_plexil::CurrentTask>
+       ("/CurrentTask", qsize, latch));
 
     // Initialize subscribers
     m_jointStatesSubscriber = make_unique<ros::Subscriber>
@@ -869,4 +873,15 @@ bool OwInterface::softTorqueLimitReached (const string& joint_name) const
 {
   return (JointsAtSoftTorqueLimit.find (joint_name) !=
           JointsAtSoftTorqueLimit.end());
+}
+
+void OwInterface::updateTaskStatus(std::string& task_name, std::string& task_status)
+{
+  ow_plexil::CurrentTask msg;
+  msg.task_name = task_name;
+  msg.task_status = task_status;
+  ROS_INFO ("[ow_exec Node] The status of the task (%s): %s",
+                 task_name.c_str(),
+                 task_status.c_str());
+  m_plexilPlanStatusPublisher->publish (msg);
 }
