@@ -73,6 +73,8 @@ include_directories(
   ${PLEXIL_INCLUDE_DIR}
 )
 
+add_library(${PROJECT_NAME} src/ow_plexil.cpp)
+
 add_subdirectory(src)
 
 #############
@@ -95,3 +97,5 @@ install(FILES
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
+install(DIRECTORY include/${PROJECT_NAME}/
+        DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
