@@ -334,7 +334,7 @@ void OwAdapter::planUpdate (PLEXIL::Update* update, PLEXIL::AdapterExecInterface
   current_task["task_status"].getValue(task_status);
 
   debugMsg("OwAdapter:planUpdate", " task (" << task_name << ") : " << task_status);
-  ROS_INFO("[OwAdapter:planUpdate]: %s: %s", task_name.c_str(), task_status.c_str());
+  //ROS_INFO("[OwAdapter:planUpdate]: %s: %s", task_name.c_str(), task_status.c_str());
 
   // Transition the Update node to be finished
   exec->handleUpdateAck (update, true);

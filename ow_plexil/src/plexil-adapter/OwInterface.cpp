@@ -880,7 +880,7 @@ void OwInterface::updateTaskStatus(std::string& task_name, std::string& task_sta
   ow_plexil::CurrentTask msg;
   msg.task_name = task_name;
   msg.task_status = task_status;
-  ROS_INFO ("[ow_exec Node] The status of the task (%s): %s",
+  ROS_INFO ("Communicate to the autonomy the status of the task (%s): %s",
                  task_name.c_str(),
                  task_status.c_str());
   m_plexilPlanStatusPublisher->publish (msg);
