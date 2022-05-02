@@ -6,6 +6,7 @@
 #include "OwExecutive.h"
 #include <string>
 #include <std_msgs/String.h>
+#include <std_msgs/Bool.h>
 
 void PlexilPlanSelection::initialize(std::string initial_plan)
 {
@@ -28,6 +29,10 @@ void PlexilPlanSelection::initialize(std::string initial_plan)
   //workaround for the getPlanState not returning correctly for first plan
   m_first_plan = true;
 
+  // assist passing the plan termination signal from autonomy to plexil executive
+  // to make the current exit (a.k.a, terminated cleanly)
+  m_terminate_plan = false;
+
   //initialize service
   m_planSelectionService = std::make_unique<ros::ServiceServer>
       (m_genericNodeHandle->
@@ -38,6 +43,11 @@ void PlexilPlanSelection::initialize(std::string initial_plan)
   m_planSelectionStatusPublisher = std::make_unique<ros::Publisher>
       (m_genericNodeHandle->advertise<std_msgs::String>
        ("/plexil_plan_selection_status", 20));
+
+  m_PlanTerminatePublisher = std::make_unique<ros::Publisher>
+      (m_genericNodeHandle->advertise<std_msgs::Bool>
+       ("/autonomy/terminate_plan", 20));
+
 
   ROS_INFO("Executive node started, ready for PLEXIL plans.");
 }
@@ -51,6 +61,13 @@ void PlexilPlanSelection::start()
     if(plan_array.size() > 0){
       length = plan_array.size();
       for(int i = 0; i < length; i++){
+	// set the terminal plan signal to false to avoid
+	// existing the plan without running
+	std_msgs::Bool msg;
+	setPlanTerminationSignal(false);
+	msg.data = getPlanTerminationSignal();
+	m_PlanTerminatePublisher->publish(msg);
+
         //trys to run the current plan
         runCurrentPlan();
         //waits until plan finishes running
@@ -79,11 +96,25 @@ void PlexilPlanSelection::waitForPlan(){
   //Once plan is finished set status to complete for GUI
   status.data = "COMPLETE";
   m_planSelectionStatusPublisher->publish(status);
+
+
+  // TBD: Publish the plan status (COMPLETE or TERMINATED) to the monitor node
+  // Need the message, PlanStatus: {plan_name/task_name, status}
+  if (getPlanTerminationSignal()){
+    ROS_INFO("[Plan Finishes] %s is directly terminated by the autonomy.", getCurrentPlanName());
+  }
+  else{
+    ROS_INFO("[Plan Finishes] %s finishes natually.", getCurrentPlanName());
+  }
 }
 
 void PlexilPlanSelection::runCurrentPlan(){
   std_msgs::String status;
   ros::Rate rate(10); // 10 Hz for overall rate we are spinning
+
+  // set the current plan name
+  setCurrentPlanName(plan_array[0]);
+
   //try to run the plan
   if(OwExecutive::instance()->runPlan(plan_array[0].c_str())){
     //workaround for getPlanState not working on first plan
@@ -121,6 +152,9 @@ void PlexilPlanSelection::runCurrentPlan(){
   plan_array.erase(plan_array.begin());
 }
 
+
+
+
 bool PlexilPlanSelection::planSelectionServiceCallback(ow_plexil::PlanSelection::Request &req,
                                                        ow_plexil::PlanSelection::Response &res)
 {
@@ -135,9 +169,70 @@ bool PlexilPlanSelection::planSelectionServiceCallback(ow_plexil::PlanSelection:
     ROS_INFO ("Plan list cleared, current plan will finish execution before stopping");
     res.success = true;
   }
+  // if command is SUSPEND, suspend the plexil executive app.
+  // The SUSPEND command's intent is to suspend the current executing plan
+  else if(req.command.compare("SUSPEND") == 0){
+   std::string plan_name = req.plans[0]; // There is only one plan in the array of plans
+   if(OwExecutive::instance()->suspendExec()){
+     ROS_INFO("The suspension of the current plan (%s): Success", plan_name.c_str());
+     res.success = true;
+   }
+   else{
+     ROS_INFO("The suspension of the current plan (%s): Failure", plan_name.c_str());
+     res.success = false;
+   }
+  }
+  // if command is RESUME, suspend the plexil executive app.
+  // The RESUME command's intent is to resume the currently suspended plan
+  else if(req.command.compare("RESUME") == 0){
+   std::string plan_name = req.plans[0]; // There is only one plan in the array of plans
+   if(OwExecutive::instance()->resumeExec()){
+     ROS_INFO("The resume of the current plan (%s): Success", plan_name.c_str());
+     res.success = true;
+   }
+   else{
+     ROS_INFO("The resume of the current plan (%s): Failure", plan_name.c_str());
+     res.success = false;
+   }
+  }
+  // if the command is TERMINATE, it terminates the currently executing plan by
+  // relaying the signal to the rostopic, /autonomy/terminate_plan, which is subscribed
+  // by the adapter to update the PLEXIL Lookup TerminatePlan in the PLEXIL plan.
+  // The TerminatePlan Lookup is used as the ExitCondition in the PLEXIL plan.
+  else if(req.command.compare("TERMINATE") == 0){
+   std_msgs::Bool msg;
+   setPlanTerminationSignal(true);
+   msg.data = getPlanTerminationSignal();
+   m_PlanTerminatePublisher->publish(msg);
+
+   std::string plan_name = req.plans[0]; // There is only one plan in the array of plans
+   ROS_INFO("The current plan (%s) is terminating...", plan_name.c_str());
+   res.success = true; // always true here.
+  }
   else{
     ROS_ERROR("Command %s not recognized", req.command.c_str());
     res.success = false;
   }
   return true;
+}
+
+
+void PlexilPlanSelection::setPlanTerminationSignal(bool value)
+{
+  m_terminate_plan = value;
+}
+
+bool PlexilPlanSelection::getPlanTerminationSignal()
+{
+  return m_terminate_plan;
+}
+
+void PlexilPlanSelection::setCurrentPlanName(std::string value)
+{
+  m_current_plan_name = value;
+}
+
+std::string PlexilPlanSelection::getCurrentPlanName()
+{
+  return m_current_plan_name;
 }

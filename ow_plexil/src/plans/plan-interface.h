@@ -103,4 +103,7 @@ Integer Lookup NumberOfUnhandledBoots;
 Boolean Lookup IsBootOK(Integer);
 Boolean Lookup DidCrash;
 
+// Plan termination signal from autonomy
+Boolean Lookup TerminatePlan;
+
 #endif

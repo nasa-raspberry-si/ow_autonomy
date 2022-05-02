@@ -8,6 +8,8 @@ Exca:
 	String taskStatus;
 	String taskOutcome;
 
+	ExitCondition Lookup(TerminatePlan);
+
 	Update task_name="Excavation", task_status="starts";
 	log_info ("[Excavation] starts");
 
@@ -23,10 +25,10 @@ Exca:
 
 		Update task_name="GuardedMove", task_status="starts";
 		log_info("[GuardedMove] starts.");
-		LibraryCall GuardedMove (
+		LibraryCall GuardedMove(
 			X = 1.75, Y = 0.1, Z = 0.2,
 			DirX = 0.1, DirY = 0.1, DirZ = 0.9,
-			SearchDistance = 0.7);
+			SearchDistance = 0.5);
 		Update task_name="GuardedMove", task_status="finishes";
 		log_info("[GuardedMove] finishes.");
 	

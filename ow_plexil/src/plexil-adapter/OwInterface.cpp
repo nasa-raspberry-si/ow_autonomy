@@ -12,6 +12,7 @@
 #include <std_msgs/Float64.h>
 #include <std_msgs/Int16.h>
 #include <std_msgs/Empty.h>
+#include <std_msgs/Bool.h>
 
 // C++
 #include <set>
@@ -334,6 +335,18 @@ static void temperature_callback (const std_msgs::Float64::ConstPtr& msg)
 }
 
 
+///////////////////////// Autonomy Request Support /////////////////////////////////////
+
+// A value of true indicates the autonomy wants to terminate the plan.
+// So, set the initial value to false
+static bool TerminatePlan = false; 
+
+static void terminatePlan_callback(const std_msgs::Bool::ConstPtr& msg)
+{
+  TerminatePlan = msg->data;
+  publish ("TerminatePlan", TerminatePlan);
+}
+
 //////////////////// GuardedMove Action support ////////////////////////////////
 
 // TODO: encapsulate GroundFound and GroundPosition in the PLEXIL command.  They
@@ -508,6 +521,11 @@ void OwInterface::initialize()
       (m_genericNodeHandle ->
        subscribe("/faults/pt_faults_status", qsize,
                 &OwInterface::antennaFaultCallback, this));
+    // subscriber for autonomy messages
+    m_batteryTempSubscriber = make_unique<ros::Subscriber>
+      (m_genericNodeHandle ->
+       subscribe("/autonomy/terminate_plan", qsize,
+                 terminatePlan_callback));
 
     m_guardedMoveClient =
       make_unique<GuardedMoveActionClient>(Op_GuardedMove, true);
@@ -875,6 +893,13 @@ bool OwInterface::softTorqueLimitReached (const string& joint_name) const
           JointsAtSoftTorqueLimit.end());
 }
 
+bool OwInterface::terminatePlan () const
+{
+  return TerminatePlan;
+}
+
+
+// Support PLEXIL Update node to pass messages from PLEXIL executive to autonomy
 void OwInterface::updateTaskStatus(std::string& task_name, std::string& task_status)
 {
   ow_plexil::CurrentTask msg;

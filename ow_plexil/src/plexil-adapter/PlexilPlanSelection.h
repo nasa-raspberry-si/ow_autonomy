@@ -15,6 +15,11 @@ class PlexilPlanSelection{
     void initialize(std::string initial_plan);
     void start();
 
+    void setPlanTerminationSignal(bool value);
+    bool getPlanTerminationSignal();
+
+    void setCurrentPlanName(std::string value);
+    std::string getCurrentPlanName();
 
   private:
     PlexilPlanSelection(const PlexilPlanSelection&) = delete;
@@ -29,7 +34,13 @@ class PlexilPlanSelection{
     std::unique_ptr<ros::Publisher> m_planSelectionStatusPublisher;
     std::vector<std::string> plan_array;
     bool m_first_plan;
- 
+
+    // It indicates whether the current plan should be terminated or not
+    // It is just used to assist passing the plan termination signal from autonomy
+    std::unique_ptr<ros::Publisher> m_PlanTerminatePublisher;
+    bool m_terminate_plan = false;
+
+    std::string m_current_plan_name = "";
 };
 
 #endif

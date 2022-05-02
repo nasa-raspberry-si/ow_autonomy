@@ -109,6 +109,8 @@ class OwInterface : public PlexilInterface
   bool hardTorqueLimitReached (const std::string& joint_name) const;
   bool softTorqueLimitReached (const std::string& joint_name) const;
 
+  bool terminatePlan () const;
+
   // PLEXIL plan status
   void updateTaskStatus(std::string& task_name, std::string& task_current);
 

@@ -133,6 +133,10 @@ static bool lookup (const string& state_name,
   else if (state_name == "PowerFault") {
     value_out = OwInterface::instance()->powerFault();
   }
+  // Plan termination signal from autonomy
+  else if (state_name == "TerminatePlan") {
+    value_out = OwInterface::instance()->terminatePlan();
+  }
   else retval = false;
 
   return retval;
