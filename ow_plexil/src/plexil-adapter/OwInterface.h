@@ -111,8 +111,8 @@ class OwInterface : public PlexilInterface
 
   bool terminatePlan () const;
 
-  // PLEXIL plan status
-  void updateTaskStatus(std::string& task_name, std::string& task_current);
+  // PLEXIL operation status: communicate it to the autonomy
+  void updateOperationStatus(std::string& task_name, std::string& task_current);
 
  private:
   void unstowAction (int id);

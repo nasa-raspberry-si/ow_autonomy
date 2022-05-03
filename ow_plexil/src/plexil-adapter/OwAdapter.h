@@ -21,6 +21,7 @@ public:
   virtual bool initialize();
   virtual void lookupNow (const PLEXIL::State&, PLEXIL::StateCacheEntry&);
 
+  // Communicate the status of some interested operation from Plexil Executive to the autonomy
   static void planUpdate (PLEXIL::Update* update, PLEXIL::AdapterExecInterface* exec);
 };
 

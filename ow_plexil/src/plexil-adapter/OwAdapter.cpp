@@ -331,20 +331,20 @@ void OwAdapter::lookupNow (const State& state, StateCacheEntry& entry)
 void OwAdapter::planUpdate (PLEXIL::Update* update, PLEXIL::AdapterExecInterface* exec)
 {
 
-  const PairValueMap& current_task = update->getPairs();
-  string task_name;
-  string task_status;
-  current_task["task_name"].getValue(task_name);
-  current_task["task_status"].getValue(task_status);
+  const PairValueMap& current_operation = update->getPairs();
+  string op_name;
+  string op_status;
+  current_operation["operation_name"].getValue(op_name);
+  current_operation["operation_status"].getValue(op_status);
 
-  debugMsg("OwAdapter:planUpdate", " task (" << task_name << ") : " << task_status);
-  //ROS_INFO("[OwAdapter:planUpdate]: %s: %s", task_name.c_str(), task_status.c_str());
+  debugMsg("OwAdapter:planUpdate", " operation (" << op_name << ") : " << op_status);
+  //ROS_INFO("[OwAdapter:planUpdate]: %s: %s", op_name.c_str(), op_status.c_str());
 
   // Transition the Update node to be finished
   exec->handleUpdateAck (update, true);
 
   // Publish the status of the current task to a ROS topic
-  OwInterface::instance()->updateTaskStatus(task_name, task_status);
+  OwInterface::instance()->updateOperationStatus(op_name, op_status);
 }
 
 

@@ -35,7 +35,7 @@ add_action_files(
 
 add_message_files(
   FILES
-  CurrentTask.msg  
+  CurrentOperation.msg  
   CurrentPlan.msg
 )
 

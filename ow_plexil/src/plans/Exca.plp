@@ -10,7 +10,7 @@ Exca:
 
 	ExitCondition Lookup(TerminatePlan);
 
-	Update task_name="Excavation", task_status="starts";
+	//Update task_name="Excavation", task_status="starts";
 	log_info ("[Excavation] starts");
 
 	log_info ("{'sel_xloc': {'sci_val': 0.5322028060234025, 'position': {'y': 0.1, 'x': 1.75}, 'ex_prob': 0.787118877590639, 'name': 'xloc1'}, 'sel_dloc': {'position': {'y': -0.1, 'x': 1.94}, 'name': 'dloc6'}, 'node_name': 'Exca'}");
@@ -20,16 +20,16 @@ Exca:
 	log_info ("[Unstow] finishes");
 
 	GroundDetection:{
-		Update task_name="GroundDetection", task_status="starts";
+		Update operation_name="GroundDetection", operation_status="starts";
 		log_info ("[GroundDetection] starts: a guarded move to find out the ground position of the location (x=1.54, y=0.1)...");
 
-		Update task_name="GuardedMove", task_status="starts";
+		Update operation_name="GuardedMove", operation_status="starts";
 		log_info("[GuardedMove] starts.");
 		LibraryCall GuardedMove(
 			X = 1.75, Y = 0.1, Z = 0.2,
 			DirX = 0.1, DirY = 0.1, DirZ = 0.9,
 			SearchDistance = 0.5);
-		Update task_name="GuardedMove", task_status="finishes";
+		Update operation_name="GuardedMove", operation_status="finishes";
 		log_info("[GuardedMove] finishes.");
 	
 	}
@@ -39,23 +39,23 @@ Exca:
 	else {
 		taskOutcome = "failure";
 	}
-	Update task_name="GroundDetection", task_status="finishes with a" + taskOutcome;
+	Update operation_name="GroundDetection", operation_status="finishes with a" + taskOutcome;
 	log_info("[GroundDetection] finishes with a ", taskOutcome, ": ", GroundDetection.outcome);
 
 	planSuccess=Lookup(GroundFound);
 	if (planSuccess) {
 		log_info ("Detected ground position: ", Lookup(GroundPosition));
 		Digging:{
-			Update task_name="Digging", task_status="starts";
+			Update operation_name="Digging", operation_status="starts";
 			log_info ("[Digging] Starts");
 			log_info ("Starting digging operation using the grind at {'sci_val': 0.5322028060234025, 'position': {'y': 0.1, 'x': 1.75}, 'ex_prob': 0.787118877590639, 'name': 'xloc1'}...");
-			Update task_name="Grinding", task_status="starts";
+			Update operation_name="Grinding", operation_status="starts";
 			log_info ("[Grinding] starts");
 			LibraryCall Grind (
 				X = 1.75, Y = 0.1, Depth = 0.05,
 				Length = 0.3, Parallel = false,
 				GroundPos = Lookup(GroundPosition));
-			Update task_name="Grinding", task_status="finishes";
+			Update operation_name="Grinding", operation_status="finishes";
 			log_info ("[Grinding] finishes");
 		}
 		if (Digging.outcome == SUCCESS) {
@@ -64,31 +64,31 @@ Exca:
 		else {
 			taskOutcome = "failure";
 		}
-		Update task_name="Digging", task_status="finishes with a " + taskOutcome;
+		Update operation_name="Digging", operation_status="finishes with a " + taskOutcome;
 		log_info ("[Digging] finishes with a ", taskOutcome);
 
 		TailingRemoval: {
-			Update task_name="TailingRemoval", task_status="starts";
+			Update operation_name="TailingRemoval", operation_status="starts";
 			log_info ("[Tailing Removal] Starts");
 			log_info ("Starts collecting the tailing using the scoop...\n");
 
-			Update task_name="DigCircular_action", task_status="starts";
+			Update operation_name="DigCircular_action", operation_status="starts";
 			log_info ("[DigCircular_action] starts");
 			LibraryCall DigCircular (
 				X = 1.75, Y = 0.1, Depth = 0.05,
 				GroundPos = Lookup(GroundPosition),
 				Parallel = false);
-			Update task_name="DigCircular_action", task_status="finishes";
+			Update operation_name="DigCircular_action", operation_status="finishes";
 			log_info ("[DigCircular_action] finishes");
 
-			Update task_name="TailingRemoval", task_status="in progress";
+			Update operation_name="TailingRemoval", operation_status="in progress";
 			log_info ("{TailingRemoval] in progress");
 			log_info ("Moving the tailing to {'position': {'y': -0.1, 'x': 1.94}, 'name': 'dloc6'}");
 			
-			Update task_name="Deliver_Action", task_status="starts";
+			Update operation_name="Deliver_Action", operation_status="starts";
 			log_info ("[Deliver_Action] starts");
 			LibraryCall Deliver (X = 1.94, Y = -0.1, Z = 0.5);
-			Update task_name="Deliver_Action", task_status="finishes";
+			Update operation_name="Deliver_Action", operation_status="finishes";
 			log_info ("[Deliver_Action] finishes");
 		}
 		if (TailingRemoval.outcome == SUCCESS) {
@@ -97,15 +97,15 @@ Exca:
 		else {
 			taskOutcome = "failure";
 		}
-		Update task_name="TailingRemoval", task_status="finishes with a " + taskOutcome;
+		Update operation_name="TailingRemoval", operation_status="finishes with a " + taskOutcome;
 		log_info ("[TailingRemoval] finishes with a  ", taskOutcome);
 	}
 	else {
 		log_error ("Failed to find ground: Skipping grind and dig.");
-		Update task_name="GuardedMove", task_status="failed";
+		Update operation_name="GuardedMove", operation_status="failed";
 	}
 	endif
 
-	Update task_name="Excavation", task_status="finishes";
+	//Update task_name="Excavation", task_status="finishes";
 	log_info ("[Excavation] finishes");
 }
