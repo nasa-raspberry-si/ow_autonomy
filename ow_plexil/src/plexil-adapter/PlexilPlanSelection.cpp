@@ -48,6 +48,11 @@ void PlexilPlanSelection::initialize(std::string initial_plan)
       (m_genericNodeHandle->advertise<std_msgs::Bool>
        ("/autonomy/terminate_plan", 20));
 
+  m_planStatusPublisher = std::make_unique<ros::Publisher>
+      (m_genericNodeHandle->advertise<ow_plexil::CurrentPlan>
+       ("/current_plan_status", 20));
+
+
 
   ROS_INFO("Executive node started, ready for PLEXIL plans.");
 }
@@ -68,6 +73,9 @@ void PlexilPlanSelection::start()
 	msg.data = getPlanTerminationSignal();
 	m_PlanTerminatePublisher->publish(msg);
 
+	// Save the current plan name
+	setCurrentPlanName(plan_array[0]);
+
         //trys to run the current plan
         runCurrentPlan();
         //waits until plan finishes running
@@ -84,6 +92,16 @@ void PlexilPlanSelection::start()
   }
 }
 
+void PlexilPlanSelection::publishChangedPlexilPlanStatus(std::string new_status){
+  // Initialize the plan status to Inactive
+  setCurrentPlanStatus(new_status);
+
+  ow_plexil::CurrentPlan current_plan;
+  current_plan.plan_name = getCurrentPlanName();
+  current_plan.plan_status = getCurrentPlanStatus();
+  m_planStatusPublisher->publish(current_plan);
+}
+
 void PlexilPlanSelection::waitForPlan(){
   std_msgs::String status;
   ros::Rate rate(10); // 10 Hz for overall rate we are spinning
@@ -98,13 +116,15 @@ void PlexilPlanSelection::waitForPlan(){
   m_planSelectionStatusPublisher->publish(status);
 
 
-  // TBD: Publish the plan status (COMPLETE or TERMINATED) to the monitor node
-  // Need the message, PlanStatus: {plan_name/task_name, status}
+  // Publish /current_plan_status the plan status (COMPLETE or TERMINATED) to the monitor node
+  // The message type of this topic is CurrentPlan: plan_name, plan_status
   if (getPlanTerminationSignal()){
-    ROS_INFO("[Plan Finishes] %s is directly terminated by the autonomy.", getCurrentPlanName());
+    publishChangedPlexilPlanStatus("Terminated");
+    ROS_INFO("[Plan Finishes] %s is directly terminated by the autonomy.", getCurrentPlanName().c_str());
   }
   else{
-    ROS_INFO("[Plan Finishes] %s finishes natually.", getCurrentPlanName());
+    publishChangedPlexilPlanStatus("Complete");
+    ROS_INFO("[Plan Finishes] %s finishes natually.", getCurrentPlanName().c_str());
   }
 }
 
@@ -112,11 +132,11 @@ void PlexilPlanSelection::runCurrentPlan(){
   std_msgs::String status;
   ros::Rate rate(10); // 10 Hz for overall rate we are spinning
 
-  // set the current plan name
-  setCurrentPlanName(plan_array[0]);
-
   //try to run the plan
   if(OwExecutive::instance()->runPlan(plan_array[0].c_str())){
+    // Change the plan status to "Plan_Registration_Start"
+    publishChangedPlexilPlanStatus("Plan_Registration_Start");
+
     //workaround for getPlanState not working on first plan
     if(m_first_plan == true){
       m_first_plan = false;
@@ -136,17 +156,23 @@ void PlexilPlanSelection::runCurrentPlan(){
         ROS_INFO ("Plan timed out, try again.");
         status.data = "FAILED:" + plan_array[0];
         m_planSelectionStatusPublisher->publish(status);
+
+	publishChangedPlexilPlanStatus("Plan_Registration_Timeout");
       }
       //otherwise we set it as running
       else{
           status.data = "SUCCESS:" + plan_array[0];
           m_planSelectionStatusPublisher->publish(status);
+
+	  publishChangedPlexilPlanStatus("Running");
       }
   }
   //if error from run() we set as failed for GUI
   else{
       status.data = "FAILED:" + plan_array[0];
       m_planSelectionStatusPublisher->publish(status);
+
+      publishChangedPlexilPlanStatus("Plan_Registration_Failure");
   }
   //delete the plan we just ran from plan array
   plan_array.erase(plan_array.begin());
@@ -162,20 +188,28 @@ bool PlexilPlanSelection::planSelectionServiceCallback(ow_plexil::PlanSelection:
   if(req.command.compare("ADD") == 0){
     plan_array.insert(plan_array.end(), req.plans.begin(), req.plans.end());
     res.success = true;
+    publishChangedPlexilPlanStatus("Inactive"); // Inactive indicates a new plan is recieved, but not starts yet.
   }
   //if command is RESET  delete all plans in the plan_array
   else if(req.command.compare("RESET") == 0){
     plan_array.clear();
     ROS_INFO ("Plan list cleared, current plan will finish execution before stopping");
     res.success = true;
+
+    // some resets for member variables related to the current plan
+    publishChangedPlexilPlanStatus("");
+    setCurrentPlanStatus("");
+    setCurrentPlanName("");
+
   }
   // if command is SUSPEND, suspend the plexil executive app.
   // The SUSPEND command's intent is to suspend the current executing plan
   else if(req.command.compare("SUSPEND") == 0){
    std::string plan_name = req.plans[0]; // There is only one plan in the array of plans
-   if(OwExecutive::instance()->suspendExec()){
+   if(getCurrentPlanStatus()=="Running" && OwExecutive::instance()->suspendExec()){
      ROS_INFO("The suspension of the current plan (%s): Success", plan_name.c_str());
      res.success = true;
+     publishChangedPlexilPlanStatus("Suspended");
    }
    else{
      ROS_INFO("The suspension of the current plan (%s): Failure", plan_name.c_str());
@@ -186,9 +220,10 @@ bool PlexilPlanSelection::planSelectionServiceCallback(ow_plexil::PlanSelection:
   // The RESUME command's intent is to resume the currently suspended plan
   else if(req.command.compare("RESUME") == 0){
    std::string plan_name = req.plans[0]; // There is only one plan in the array of plans
-   if(OwExecutive::instance()->resumeExec()){
+   if(getCurrentPlanStatus()=="Suspended" && OwExecutive::instance()->resumeExec()){
      ROS_INFO("The resume of the current plan (%s): Success", plan_name.c_str());
      res.success = true;
+     publishChangedPlexilPlanStatus("Running");
    }
    else{
      ROS_INFO("The resume of the current plan (%s): Failure", plan_name.c_str());
@@ -235,4 +270,14 @@ void PlexilPlanSelection::setCurrentPlanName(std::string value)
 std::string PlexilPlanSelection::getCurrentPlanName()
 {
   return m_current_plan_name;
+}
+
+void PlexilPlanSelection::setCurrentPlanStatus(std::string value)
+{
+  m_current_plan_status = value;
+}
+
+std::string PlexilPlanSelection::getCurrentPlanStatus()
+{
+  return m_current_plan_status;
 }

@@ -7,6 +7,7 @@
 
 #include <ros/ros.h>
 #include <ow_plexil/PlanSelection.h>
+#include <ow_plexil/CurrentPlan.h>
 
 class PlexilPlanSelection{
   public:
@@ -20,6 +21,11 @@ class PlexilPlanSelection{
 
     void setCurrentPlanName(std::string value);
     std::string getCurrentPlanName();
+
+    void setCurrentPlanStatus(std::string value);
+    std::string getCurrentPlanStatus();
+
+    void publishChangedPlexilPlanStatus(std::string new_status);
 
   private:
     PlexilPlanSelection(const PlexilPlanSelection&) = delete;
@@ -41,6 +47,9 @@ class PlexilPlanSelection{
     bool m_terminate_plan = false;
 
     std::string m_current_plan_name = "";
+    std::string m_current_plan_status = "";
+
+    std::unique_ptr<ros::Publisher> m_planStatusPublisher;
 };
 
 #endif
