@@ -66,7 +66,7 @@ void PlexilPlanSelection::start()
     if(plan_array.size() > 0){
       length = plan_array.size();
       for(int i = 0; i < length; i++){
-	// set the terminal plan signal to false to avoid
+	// set the termination plan signal to false to avoid
 	// existing the plan without running
 	std_msgs::Bool msg;
 	setPlanTerminationSignal(false);
@@ -75,6 +75,9 @@ void PlexilPlanSelection::start()
 
 	// Save the current plan name
 	setCurrentPlanName(plan_array[0]);
+	// Set and publish the current plan status as "Inactive"
+	// "Inactive" indicates a new plan is recieved, but not starts yet.
+	publishChangedPlexilPlanStatus("Inactive"); 
 
         //trys to run the current plan
         runCurrentPlan();
@@ -93,7 +96,6 @@ void PlexilPlanSelection::start()
 }
 
 void PlexilPlanSelection::publishChangedPlexilPlanStatus(std::string new_status){
-  // Initialize the plan status to Inactive
   setCurrentPlanStatus(new_status);
 
   ow_plexil::CurrentPlan current_plan;
@@ -122,7 +124,7 @@ void PlexilPlanSelection::waitForPlan(){
     publishChangedPlexilPlanStatus("Terminated");
     ROS_INFO("[Plan Finishes] %s is directly terminated by the autonomy.", getCurrentPlanName().c_str());
   }
-  else{
+  else if (getCurrentPlanStatus()!="Plan_Registration_Timeout" && getCurrentPlanStatus()!="Plan_Registration_Failure") {
     publishChangedPlexilPlanStatus("Complete");
     ROS_INFO("[Plan Finishes] %s finishes natually.", getCurrentPlanName().c_str());
   }
