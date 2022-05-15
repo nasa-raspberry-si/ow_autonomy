@@ -331,20 +331,22 @@ void OwAdapter::lookupNow (const State& state, StateCacheEntry& entry)
 void OwAdapter::planUpdate (PLEXIL::Update* update, PLEXIL::AdapterExecInterface* exec)
 {
 
-  const PairValueMap& current_operation = update->getPairs();
-  string op_name;
-  string op_status;
-  current_operation["operation_name"].getValue(op_name);
-  current_operation["operation_status"].getValue(op_status);
+  const PairValueMap& current_checkpoint = update->getPairs();
+  string checkpoint_type;
+  string checkpoint_name;
+  string checkpoint_status;
+  current_checkpoint["checkpoint_type"].getValue(checkpoint_type);
+  current_checkpoint["checkpoint_name"].getValue(checkpoint_name);
+  current_checkpoint["checkpoint_status"].getValue(checkpoint_status);
 
-  debugMsg("OwAdapter:planUpdate", " operation (" << op_name << ") : " << op_status);
-  //ROS_INFO("[OwAdapter:planUpdate]: %s: %s", op_name.c_str(), op_status.c_str());
+  debugMsg("[OwAdapter:planUpdate]", " Checkpoint: type (" << checkpoint_type << "), name (" << checkpoint_name << "), status (" << checkpoint_status << ")");
+  ROS_INFO("[OwAdapter:planUpdate] Checkpoint: type (%s), name (%s), status (%s)", checkpoint_type.c_str(), checkpoint_name.c_str(), checkpoint_status.c_str());
 
   // Transition the Update node to be finished
   exec->handleUpdateAck (update, true);
 
-  // Publish the status of the current task to a ROS topic
-  OwInterface::instance()->updateOperationStatus(op_name, op_status);
+  // Publish the status of an interesting point in the PLEXIL plan to a ROS topic
+  OwInterface::instance()->updateCheckpointStatus(checkpoint_type, checkpoint_name, checkpoint_status);
 }
 
 

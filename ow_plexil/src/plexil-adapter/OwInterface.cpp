@@ -7,6 +7,7 @@
 #include "subscriber.h"
 #include "joint_support.h"
 #include <ow_plexil/CurrentOperation.h>
+#include <ow_plexil/CurrentPlan.h>
 
 // ROS
 #include <std_msgs/Float64.h>
@@ -478,8 +479,12 @@ void OwInterface::initialize()
       (m_genericNodeHandle->advertise<std_msgs::Empty>
        ("/StereoCamera/left/image_trigger", qsize, latch));
     m_plexilPlanStatusPublisher = make_unique<ros::Publisher>
+      (m_genericNodeHandle->advertise<ow_plexil::CurrentPlan>
+       ("/CurrentPlan", qsize, latch));
+    m_plexilOperationStatusPublisher = make_unique<ros::Publisher>
       (m_genericNodeHandle->advertise<ow_plexil::CurrentOperation>
        ("/CurrentOperation", qsize, latch));
+
 
     // Initialize subscribers
     m_jointStatesSubscriber = make_unique<ros::Subscriber>
@@ -900,13 +905,25 @@ bool OwInterface::terminatePlan () const
 
 
 // Support PLEXIL Update node to pass messages from PLEXIL executive to autonomy
-void OwInterface::updateOperationStatus(std::string& op_name, std::string& op_status)
+void OwInterface::updateCheckpointStatus(std::string& cp_type, std::string& cp_name, std::string& cp_status)
 {
-  ow_plexil::CurrentOperation msg;
-  msg.op_name = op_name;
-  msg.op_status = op_status;
-  ROS_INFO ("Communicate to the autonomy the status of the operation (%s): %s",
-                 op_name.c_str(),
-                 op_status.c_str());
-  m_plexilPlanStatusPublisher->publish (msg);
+  if (cp_type == "Operation") {
+    ow_plexil::CurrentOperation msg;
+    msg.op_name = cp_name;
+    msg.op_status = cp_status;
+    ROS_INFO ("Communicate to the autonomy the status of the operation (%s): %s",
+                 cp_name.c_str(),
+                 cp_status.c_str());
+    m_plexilOperationStatusPublisher->publish (msg);
+  } else if (cp_type == "Plan") {
+    ow_plexil::CurrentPlan msg;
+    msg.plan_name = cp_name;
+    msg.plan_status = cp_status;
+    ROS_INFO ("Communicate to the autonomy the status of the plan (%s): %s",
+                 cp_name.c_str(),
+                 cp_status.c_str());
+    m_plexilPlanStatusPublisher->publish (msg);
+  } else {
+    ROS_INFO ("Unsupported checkpoint type: %s", cp_type.c_str());
+  }
 }

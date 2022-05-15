@@ -3,14 +3,16 @@
 
 Exca:
 {
-	Boolean planSuccess;
-	String taskName;
-	String taskStatus;
-	String taskOutcome;
+	Boolean GroundDetectionSuccess=false;
+	Boolean DiggingSuccess=false;
+	Boolean TrenchReady=false;
+
+	String OpOutcome;
+	String PlanStatus;
 
 	ExitCondition Lookup(TerminatePlan);
 
-	//Update task_name="Excavation", task_status="starts";
+    Update checkpoint_type="Plan", checkpoint_name="Exca.plx", checkpoint_status=PLAN_STARTED;
 	log_info ("[Excavation] starts");
 
 	log_info ("{'sel_xloc': {'sci_val': 0.5322028060234025, 'position': {'y': 0.1, 'x': 1.75}, 'ex_prob': 0.787118877590639, 'name': 'xloc1'}, 'sel_dloc': {'position': {'y': -0.1, 'x': 1.94}, 'name': 'dloc6'}, 'node_name': 'Exca'}");
@@ -20,92 +22,78 @@ Exca:
 	log_info ("[Unstow] finishes");
 
 	GroundDetection:{
-		Update operation_name="GroundDetection", operation_status="starts";
+		Update checkpoint_type="Operation", checkpoint_name="GroundDetection", checkpoint_status=OP_STARTED;
 		log_info ("[GroundDetection] starts: a guarded move to find out the ground position of the location (x=1.54, y=0.1)...");
 
-		Update operation_name="GuardedMove", operation_status="starts";
 		log_info("[GuardedMove] starts.");
 		LibraryCall GuardedMove(
 			X = 1.75, Y = 0.1, Z = 0.2,
 			DirX = 0.1, DirY = 0.1, DirZ = 0.9,
 			SearchDistance = 0.5);
-		Update operation_name="GuardedMove", operation_status="finishes";
 		log_info("[GuardedMove] finishes.");
-	
 	}
-	if (GroundDetection.outcome == SUCCESS) {
-		taskOutcome = "success";
+	if (Lookup(GroundFound) && GroundDetection.outcome == SUCCESS) {
+	    GroundDetectionSuccess=true;
+		OpOutcome = OP_SUCCESS;
+        log_info ("Detected ground position: ", Lookup(GroundPosition));
 	}
 	else {
-		taskOutcome = "failure";
+		OpOutcome = OP_FAILURE;
 	}
-	Update operation_name="GroundDetection", operation_status="finishes with a" + taskOutcome;
-	log_info("[GroundDetection] finishes with a ", taskOutcome, ": ", GroundDetection.outcome);
+	Update checkpoint_type="Operation", checkpoint_name="GroundDetection", checkpoint_status=OpOutcome;
+	log_info("[GroundDetection] ", OpOutcome);
 
-	planSuccess=Lookup(GroundFound);
-	if (planSuccess) {
-		log_info ("Detected ground position: ", Lookup(GroundPosition));
+	if (GroundDetectionSuccess) {
 		Digging:{
-			Update operation_name="Digging", operation_status="starts";
+			Update checkpoint_type="Operation", checkpoint_name="Digging", checkpoint_status=OP_STARTED;
 			log_info ("[Digging] Starts");
 			log_info ("Starting digging operation using the grind at {'sci_val': 0.5322028060234025, 'position': {'y': 0.1, 'x': 1.75}, 'ex_prob': 0.787118877590639, 'name': 'xloc1'}...");
-			Update operation_name="Grinding", operation_status="starts";
-			log_info ("[Grinding] starts");
 			LibraryCall Grind (
-				X = 1.75, Y = 0.1, Depth = 0.05,
+				X = 1.75, Y = 0.1, Depth = 0.10,
 				Length = 0.3, Parallel = false,
 				GroundPos = Lookup(GroundPosition));
-			Update operation_name="Grinding", operation_status="finishes";
-			log_info ("[Grinding] finishes");
 		}
 		if (Digging.outcome == SUCCESS) {
-			taskOutcome = "success";
+		    DiggingSuccess = true;
+			OpOutcome = OP_SUCCESS;
 		}
 		else {
-			taskOutcome = "failure";
+			OpOutcome = OP_FAILURE;
 		}
-		Update operation_name="Digging", operation_status="finishes with a " + taskOutcome;
-		log_info ("[Digging] finishes with a ", taskOutcome);
+        Update checkpoint_type="Operation", checkpoint_name="Digging", checkpoint_status=OpOutcome;
+		log_info ("[Digging] ", OpOutcome);
 
-		TailingRemoval: {
-			Update operation_name="TailingRemoval", operation_status="starts";
-			log_info ("[Tailing Removal] Starts");
-			log_info ("Starts collecting the tailing using the scoop...\n");
+		if (DiggingSuccess) {
+			TailingRemoval: {
+				Update checkpoint_type="Operation", checkpoint_name="TailingRemoval", checkpoint_status=OP_STARTED;
+				log_info ("[Tailing Removal] Starts");
 
-			Update operation_name="DigCircular_action", operation_status="starts";
-			log_info ("[DigCircular_action] starts");
-			LibraryCall DigCircular (
-				X = 1.75, Y = 0.1, Depth = 0.05,
-				GroundPos = Lookup(GroundPosition),
-				Parallel = false);
-			Update operation_name="DigCircular_action", operation_status="finishes";
-			log_info ("[DigCircular_action] finishes");
+				log_info ("Starts collecting the tailing using the scoop...\n");
+				LibraryCall DigCircular (
+					X = 1.75, Y = 0.1, Depth = 0.05,
+					GroundPos = Lookup(GroundPosition),
+					Parallel = false);
 
-			Update operation_name="TailingRemoval", operation_status="in progress";
-			log_info ("{TailingRemoval] in progress");
-			log_info ("Moving the tailing to {'position': {'y': -0.1, 'x': 1.94}, 'name': 'dloc6'}");
-			
-			Update operation_name="Deliver_Action", operation_status="starts";
-			log_info ("[Deliver_Action] starts");
-			LibraryCall Deliver (X = 1.94, Y = -0.1, Z = 0.5);
-			Update operation_name="Deliver_Action", operation_status="finishes";
-			log_info ("[Deliver_Action] finishes");
+				log_info ("Moving the tailing to {'position': {'y': -0.1, 'x': 1.94}, 'name': 'dloc6'}");
+				LibraryCall Deliver (X = 1.94, Y = -0.1, Z = 0.5);
+			}
+			if (TailingRemoval.outcome == SUCCESS) {
+			    TrenchReady = true;
+				OpOutcome = OP_SUCCESS;
+			}
+			else {
+				OpOutcome = OP_FAILURE;
+			}
+			Update checkpoint_type="Operation", checkpoint_name="TailingRemoval", checkpoint_status=OpOutcome;
+			log_info ("[TailingRemoval] ", OpOutcome);
 		}
-		if (TailingRemoval.outcome == SUCCESS) {
-			taskOutcome = "success";
-		}
-		else {
-			taskOutcome = "failure";
-		}
-		Update operation_name="TailingRemoval", operation_status="finishes with a " + taskOutcome;
-		log_info ("[TailingRemoval] finishes with a  ", taskOutcome);
 	}
-	else {
-		log_error ("Failed to find ground: Skipping grind and dig.");
-		Update operation_name="GuardedMove", operation_status="failed";
-	}
-	endif
 
-	//Update task_name="Excavation", task_status="finishes";
+    if (TrenchReady) {
+      PlanStatus=PLAN_SUCCESS;
+    } else {
+      PlanStatus=PLAN_FAILURE;
+    }
+	Update checkpoint_type="Plan", checkpoint_name="Exca.plx", checkpoint_status=PlanStatus;
 	log_info ("[Excavation] finishes");
 }

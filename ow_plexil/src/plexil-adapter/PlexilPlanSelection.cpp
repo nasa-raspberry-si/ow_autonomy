@@ -50,7 +50,7 @@ void PlexilPlanSelection::initialize(std::string initial_plan)
 
   m_planStatusPublisher = std::make_unique<ros::Publisher>
       (m_genericNodeHandle->advertise<ow_plexil::CurrentPlan>
-       ("/current_plan_status", 20));
+       ("/CurrentPlan", 20));
 
 
 
@@ -117,16 +117,13 @@ void PlexilPlanSelection::waitForPlan(){
   status.data = "COMPLETE";
   m_planSelectionStatusPublisher->publish(status);
 
-
-  // Publish /current_plan_status the plan status (COMPLETE or TERMINATED) to the monitor node
+  // Here, publish to /CurrentPlan the plan status: Terminated
   // The message type of this topic is CurrentPlan: plan_name, plan_status
+  // The Completed_Success and Completed_Failure status are published to
+  // /CurrentPlan indirectly by using an Update node at the end of the plan.
   if (getPlanTerminationSignal()){
     publishChangedPlexilPlanStatus("Terminated");
     ROS_INFO("[Plan Finishes] %s is directly terminated by the autonomy.", getCurrentPlanName().c_str());
-  }
-  else if (getCurrentPlanStatus()!="Plan_Registration_Timeout" && getCurrentPlanStatus()!="Plan_Registration_Failure") {
-    publishChangedPlexilPlanStatus("Complete");
-    ROS_INFO("[Plan Finishes] %s finishes natually.", getCurrentPlanName().c_str());
   }
 }
 
@@ -166,7 +163,7 @@ void PlexilPlanSelection::runCurrentPlan(){
           status.data = "SUCCESS:" + plan_array[0];
           m_planSelectionStatusPublisher->publish(status);
 
-	  publishChangedPlexilPlanStatus("Running");
+	  publishChangedPlexilPlanStatus("Plan_Registration_Success");
       }
   }
   //if error from run() we set as failed for GUI

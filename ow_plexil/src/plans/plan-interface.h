@@ -106,4 +106,15 @@ Boolean Lookup DidCrash;
 // Plan termination signal from autonomy
 Boolean Lookup TerminatePlan;
 
+// Operation Statuses
+#define OP_STARTED "Started"
+#define OP_SUCCESS "Completed_Success"
+#define OP_FAILURE "Completed_FAILURE"
+
+// Plan Statuses
+#define PLAN_STARTED "Started"
+#define PLAN_SUCCESS "Completed_Success"
+#define PLAN_FAILURE "Completed_FAILURE"
+
+
 #endif
