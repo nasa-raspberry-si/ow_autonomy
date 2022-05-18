@@ -66,18 +66,18 @@ void PlexilPlanSelection::start()
     if(plan_array.size() > 0){
       length = plan_array.size();
       for(int i = 0; i < length; i++){
-	// set the termination plan signal to false to avoid
-	// existing the plan without running
-	std_msgs::Bool msg;
-	setPlanTerminationSignal(false);
-	msg.data = getPlanTerminationSignal();
-	m_PlanTerminatePublisher->publish(msg);
+	    // set the termination plan signal to false to avoid
+	    // existing the plan without running
+	    std_msgs::Bool msg;
+	    setPlanTerminationSignal(false);
+	    msg.data = getPlanTerminationSignal();
+	    m_PlanTerminatePublisher->publish(msg);
 
-	// Save the current plan name
-	setCurrentPlanName(plan_array[0]);
-	// Set and publish the current plan status as "Inactive"
-	// "Inactive" indicates a new plan is recieved, but not starts yet.
-	publishChangedPlexilPlanStatus("Inactive"); 
+	    // Save the current plan name
+	    setCurrentPlanName(plan_array[0]);
+	    // Set and publish the current plan status as "Inactive"
+	    // "Inactive" indicates a new plan is recieved, but not starts yet.
+	    publishChangedPlexilPlanStatus("Inactive"); 
 
         //trys to run the current plan
         runCurrentPlan();
@@ -150,28 +150,29 @@ void PlexilPlanSelection::runCurrentPlan(){
         ROS_ERROR("Plan not responding, timing out in %i seconds", (3 - timeout/10));
       }
     }
-      //if timed out we set plan as failed for GUI
-      if(timeout == 30){
-        ROS_INFO ("Plan timed out, try again.");
-        status.data = "FAILED:" + plan_array[0];
-        m_planSelectionStatusPublisher->publish(status);
 
-	publishChangedPlexilPlanStatus("Plan_Registration_Timeout");
-      }
-      //otherwise we set it as running
-      else{
-          status.data = "SUCCESS:" + plan_array[0];
-          m_planSelectionStatusPublisher->publish(status);
-
-	  publishChangedPlexilPlanStatus("Plan_Registration_Success");
-      }
-  }
-  //if error from run() we set as failed for GUI
-  else{
+    //if timed out we set plan as failed for GUI
+    if(timeout == 30){
+      ROS_INFO ("Plan timed out, try again.");
       status.data = "FAILED:" + plan_array[0];
       m_planSelectionStatusPublisher->publish(status);
 
-      publishChangedPlexilPlanStatus("Plan_Registration_Failure");
+	  publishChangedPlexilPlanStatus("Plan_Registration_Timeout");
+    }
+    //otherwise we set it as running
+    else{
+      status.data = "SUCCESS:" + plan_array[0];
+      m_planSelectionStatusPublisher->publish(status);
+
+      publishChangedPlexilPlanStatus("Plan_Registration_Success");
+    }
+  }
+  //if error from run() we set as failed for GUI
+  else{
+    status.data = "FAILED:" + plan_array[0];
+    m_planSelectionStatusPublisher->publish(status);
+
+    publishChangedPlexilPlanStatus("Plan_Registration_Failure");
   }
   //delete the plan we just ran from plan array
   plan_array.erase(plan_array.begin());
