@@ -370,6 +370,74 @@ double OwInterface::groundPosition () const
   return GroundPosition;
 }
 
+// Propogate the status of Grind, DigCircular and Deliver operations back to
+// the PLEXIL plan through the corresponding Lookups. (Similar to GuardedMove)
+// Use Case: when one of the above operation is conducting, if an arm fault is
+// injected, the operation (the ROS action) will end in the "ABORTED" state.
+// While currently there is no way to use the status signal in the PLEXIL plan.
+static bool GrindSuccess = false;
+static bool DigCircularSuccess = false;
+static bool DeliverSuccess = false;
+static bool GuardedMoveSuccess = false;
+
+bool OwInterface::opState (const string& opname) const
+{
+  if (opname == "Grind") {
+    ROS_INFO("Query state of Grind Op: %s", GrindSuccess?"success":"failure");
+	return GrindSuccess;
+  }
+  else if (opname == "DigCircular") {
+    ROS_INFO("Query state of DigCircular Op: %s", DigCircularSuccess?"success":"failure");
+	return DigCircularSuccess;
+  }
+  else if (opname == "Deliver") {
+    ROS_INFO("Query state of Deliver Op: %s", DeliverSuccess?"success":"failure");
+    return DeliverSuccess;
+  }
+  else if (opname == "GuardedMove") {
+    ROS_INFO("Query state of GuardedMove Op: %s", GuardedMoveSuccess?"success":"failure");
+    return GuardedMoveSuccess;
+  }
+  else {
+    return false;
+  }
+}
+
+bool static isOpSucceeded (const string& opstate)
+{
+  if (opstate == "SUCCEEDED")
+	return true;
+  else
+    return false;
+}
+void static updateOpState (const string& opname, string opstate)
+{
+  if (opname == "Grind") {
+	GrindSuccess = isOpSucceeded(opstate);
+  }
+  else if (opname == "DigCircular") {
+	DigCircularSuccess = isOpSucceeded(opstate);
+  }
+  else if (opname == "Deliver") {
+    DeliverSuccess = isOpSucceeded(opstate);
+  }
+  else if (opname == "GuardedMove") {
+    GuardedMoveSuccess = isOpSucceeded(opstate);
+  }
+}
+
+template<typename T>
+static t_action_done_cb<T> excavation_actions_done_cb (const string& opname)
+{
+  return [&] (const actionlib::SimpleClientGoalState& state,
+              const T& result_ignored) {
+    ROS_INFO ("%s finished in state %s", opname.c_str(), state.toString().c_str());
+
+    updateOpState(opname, state.toString());
+  };
+}
+
+
 template <typename T>
 bool OwInterface::faultActive (const T& fmap) const
 {
@@ -409,6 +477,8 @@ static t_action_done_cb<T> guarded_move_done_cb (const string& opname)
     GroundPosition = result->final.z;
     publish ("GroundFound", GroundFound);
     publish ("GroundPosition", GroundPosition);
+
+	updateOpState(opname, state.toString());
   };
 }
 
@@ -630,7 +700,7 @@ void OwInterface::deliverAction (double x, double y, double z, int id)
     (Op_Deliver, m_deliverClient, goal, id,
      default_action_active_cb (Op_Deliver),
      default_action_feedback_cb<DeliverFeedbackConstPtr> (Op_Deliver),
-     default_action_done_cb<DeliverResultConstPtr> (Op_Deliver));
+     excavation_actions_done_cb<DeliverResultConstPtr> (Op_Deliver));
 }
 
 void OwInterface::digLinear (double x, double y,
@@ -692,7 +762,7 @@ void OwInterface::digCircularAction (double x, double y, double depth,
     (Op_DigCircular, m_digCircularClient, goal, id,
      default_action_active_cb (Op_DigCircular),
      default_action_feedback_cb<DigCircularFeedbackConstPtr> (Op_DigCircular),
-     default_action_done_cb<DigCircularResultConstPtr> (Op_DigCircular));
+     excavation_actions_done_cb<DigCircularResultConstPtr> (Op_DigCircular));
 }
 
 
@@ -767,7 +837,7 @@ void OwInterface::grindAction (double x, double y, double depth, double length,
     (Op_Grind, m_grindClient, goal, id,
      default_action_active_cb (Op_Grind),
      default_action_feedback_cb<GrindFeedbackConstPtr> (Op_Grind),
-     default_action_done_cb<GrindResultConstPtr> (Op_Grind));
+     excavation_actions_done_cb<GrindResultConstPtr> (Op_Grind));
 }
 
 void OwInterface::guardedMove (double x, double y, double z,

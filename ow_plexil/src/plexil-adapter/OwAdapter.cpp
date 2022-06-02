@@ -120,6 +120,11 @@ static bool lookup (const string& state_name,
   else if (state_name == "GroundPosition") {
     value_out = OwInterface::instance()->groundPosition();
   }
+  else if (state_name == "OpState") {
+    string opname;
+    args[0].getValue(opname);
+    value_out = OwInterface::instance()->opState(opname);
+  }
   // Faults
   else if (state_name == "SystemFault") {
     value_out = OwInterface::instance()->systemFault();

@@ -106,12 +106,18 @@ Boolean Lookup DidCrash;
 // Plan termination signal from autonomy
 Boolean Lookup TerminatePlan;
 
-// Operation Statuses
+// Related to states of operations in excavation
+// Currently support operations, Grind, DigCircular and Deliver
+// true: SUCCEEDED state - ROS action
+// false: other states
+Boolean Lookup OpState(String opname);
+
+// Names of Operation Status
 #define OP_STARTED "Started"
 #define OP_SUCCESS "Completed_Success"
 #define OP_FAILURE "Completed_Failure"
 
-// Plan Statuses
+// Name of Plan Status
 #define PLAN_STARTED "Started"
 #define PLAN_SUCCESS "Completed_Success"
 #define PLAN_FAILURE "Completed_Failure"
