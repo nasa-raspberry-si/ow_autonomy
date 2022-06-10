@@ -383,7 +383,6 @@ void OwAdapter::planUpdate (PLEXIL::Update* update, PLEXIL::AdapterExecInterface
   current_checkpoint["checkpoint_status"].getValue(checkpoint_status);
 
   debugMsg("[OwAdapter:planUpdate]", " Checkpoint: type (" << checkpoint_type << "), name (" << checkpoint_name << "), status (" << checkpoint_status << ")");
-  ROS_INFO("[OwAdapter:planUpdate] Checkpoint: type (%s), name (%s), status (%s)", checkpoint_type.c_str(), checkpoint_name.c_str(), checkpoint_status.c_str());
 
   // Transition the Update node to be finished
   exec->handleUpdateAck (update, true);

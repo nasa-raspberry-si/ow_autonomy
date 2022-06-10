@@ -415,32 +415,41 @@ double OwInterface::groundPosition () const
   return GroundPosition;
 }
 
-// Propogate the status of Grind, DigCircular and Deliver operations back to
+// Propogate the status of Grind, DigCircular and Discard operations back to
 // the PLEXIL plan through the corresponding Lookups. (Similar to GuardedMove)
 // Use Case: when one of the above operation is conducting, if an arm fault is
 // injected, the operation (the ROS action) will end in the "ABORTED" state.
 // While currently there is no way to use the status signal in the PLEXIL plan.
+//
+// ToDo: use a static map to maintain the state of each lander operation.
+//       Idea:
+//         The key is the operation name in string, the value is true or false.
+//         A 'true' value indicates the operation is successful while a 'false'
+//         value indicates a failure of the operation.
+//       Concern:
+//         For operations in other scenario, a binary value representation
+//         for the state of the operation might not be enough.
 static bool GrindSuccess = false;
 static bool DigCircularSuccess = false;
-static bool DeliverSuccess = false;
+static bool DiscardSuccess = false;
 static bool GuardedMoveSuccess = false;
 
 bool OwInterface::opState (const string& opname) const
 {
-  if (opname == "Grind") {
-    ROS_INFO("Query state of Grind Op: %s", GrindSuccess?"success":"failure");
-	return GrindSuccess;
+  if (opname == LanderOpNames[Grind]) {
+    ROS_DEBUG("Query state of Grind Op: %s", GrindSuccess?"success":"failure");
+    return GrindSuccess;
   }
-  else if (opname == "DigCircular") {
-    ROS_INFO("Query state of DigCircular Op: %s", DigCircularSuccess?"success":"failure");
-	return DigCircularSuccess;
+  else if (opname == LanderOpNames[DigCircular]) {
+    ROS_DEBUG("Query state of DigCircular Op: %s", DigCircularSuccess?"success":"failure");
+    return DigCircularSuccess;
   }
-  else if (opname == "Deliver") {
-    ROS_INFO("Query state of Deliver Op: %s", DeliverSuccess?"success":"failure");
-    return DeliverSuccess;
+  else if (opname == LanderOpNames[Discard]) {
+    ROS_DEBUG("Query state of Discard Op: %s", DiscardSuccess?"success":"failure");
+    return DiscardSuccess;
   }
-  else if (opname == "GuardedMove") {
-    ROS_INFO("Query state of GuardedMove Op: %s", GuardedMoveSuccess?"success":"failure");
+  else if (opname == LanderOpNames[GuardedMove]) {
+    ROS_DEBUG("Query state of GuardedMove Op: %s", GuardedMoveSuccess?"success":"failure");
     return GuardedMoveSuccess;
   }
   else {
@@ -451,22 +460,23 @@ bool OwInterface::opState (const string& opname) const
 bool static isOpSucceeded (const string& opstate)
 {
   if (opstate == "SUCCEEDED")
-	return true;
+    return true;
   else
     return false;
 }
+
 void static updateOpState (const string& opname, string opstate)
 {
-  if (opname == "Grind") {
-	GrindSuccess = isOpSucceeded(opstate);
+  if (opname == LanderOpNames[Grind]) {
+    GrindSuccess = isOpSucceeded(opstate);
   }
-  else if (opname == "DigCircular") {
-	DigCircularSuccess = isOpSucceeded(opstate);
+  else if (opname == LanderOpNames[DigCircular]) {
+    DigCircularSuccess = isOpSucceeded(opstate);
   }
-  else if (opname == "Deliver") {
-    DeliverSuccess = isOpSucceeded(opstate);
+  else if (opname == LanderOpNames[Discard]) {
+    DiscardSuccess = isOpSucceeded(opstate);
   }
-  else if (opname == "GuardedMove") {
+  else if (opname == LanderOpNames[GuardedMove]) {
     GuardedMoveSuccess = isOpSucceeded(opstate);
   }
 }
@@ -757,7 +767,7 @@ void OwInterface::deliverAction (int id)
     (Op_Deliver, m_deliverClient, goal, id,
      default_action_active_cb (Op_Deliver),
      default_action_feedback_cb<DeliverFeedbackConstPtr> (Op_Deliver),
-     excavation_actions_done_cb<DeliverResultConstPtr> (Op_Deliver));
+     default_action_done_cb<DeliverResultConstPtr> (Op_Deliver));
 }
 
 void OwInterface::discardAction (double x, double y, double z, int id)
@@ -776,7 +786,7 @@ void OwInterface::discardAction (double x, double y, double z, int id)
     (Op_Discard, m_discardClient, goal, id,
      default_action_active_cb (Op_Discard),
      default_action_feedback_cb<DiscardFeedbackConstPtr> (Op_Discard),
-     default_action_done_cb<DiscardResultConstPtr> (Op_Discard));
+     excavation_actions_done_cb<DiscardResultConstPtr> (Op_Discard));
 }
 
 void OwInterface::digLinear (double x, double y,
@@ -1093,7 +1103,7 @@ void OwInterface::updateCheckpointStatus(std::string& cp_type, std::string& cp_n
     ow_plexil::CurrentOperation msg;
     msg.op_name = cp_name;
     msg.op_status = cp_status;
-    ROS_INFO ("Communicate to the autonomy the status of the operation (%s): %s",
+    ROS_INFO ("Communicate to the autonomy the status of the Operation (%s): %s",
                  cp_name.c_str(),
                  cp_status.c_str());
     m_plexilOperationStatusPublisher->publish (msg);
@@ -1101,7 +1111,7 @@ void OwInterface::updateCheckpointStatus(std::string& cp_type, std::string& cp_n
     ow_plexil::CurrentPlan msg;
     msg.plan_name = cp_name;
     msg.plan_status = cp_status;
-    ROS_INFO ("Communicate to the autonomy the status of the plan (%s): %s",
+    ROS_INFO ("Communicate to the autonomy the status of the Plan (%s): %s",
                  cp_name.c_str(),
                  cp_status.c_str());
     m_plexilPlanStatusPublisher->publish (msg);

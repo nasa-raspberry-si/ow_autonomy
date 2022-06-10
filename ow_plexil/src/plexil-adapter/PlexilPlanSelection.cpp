@@ -188,7 +188,6 @@ bool PlexilPlanSelection::planSelectionServiceCallback(ow_plexil::PlanSelection:
   if(req.command.compare("ADD") == 0){
     plan_array.insert(plan_array.end(), req.plans.begin(), req.plans.end());
     res.success = true;
-    publishChangedPlexilPlanStatus("Inactive"); // Inactive indicates a new plan is recieved, but not starts yet.
   }
   //if command is RESET  delete all plans in the plan_array
   else if(req.command.compare("RESET") == 0){

@@ -1,0 +1,97 @@
+// The following PLEXIL codes are automatically generated during planning.
+
+#include "plan-interface.h"
+
+
+ExcavationPlan1:
+{
+	Boolean TrenchReady=false;
+	Boolean GroundDetectionSuccess=false;
+	Boolean DiggingSuccess=false;
+	String PlanStatus;
+	String OpOutcome;
+	
+	ExitCondition Lookup(TerminatePlan);
+	
+	Update checkpoint_type="Plan", checkpoint_name="ExcavationPlan1.plx", checkpoint_status=PLAN_STARTED;
+	log_info ("[ExcavationPlan1.plx] Start");
+
+	log_info ("{\"sel_xloc\": {\"sci_val\": 0.5327, \"position\": {\"y\": 0.6, \"x\": 1.49}, \"ex_prob\": 0.7836, \"name\": \"xloc1\"}, \"sel_dloc\": {\"position\": {\"y\": 0.4, \"x\": 1.91}, \"name\": \"dloc4\"}, \"task_name\": 1, \"node_name\": \"ExcavationPlan1\"}");
+
+	log_info ("[Unstow] Start");
+	LibraryCall Unstow();
+	log_info ("[Unstow] Finish");
+
+	Update checkpoint_type="Operation", checkpoint_name="GuardedMove", checkpoint_status=OP_STARTED;
+	log_info ("[GuardedMove Operation] Start: a guarded move to find out the ground postion of the location (x=1.49, y=0.6)");
+
+	LibraryCall GuardedMove (
+		X = 1.49, Y = 0.6, Z = 0.05,
+		DirX = 0.0, DirY = 0.0, DirZ = 1.0,
+		SearchDistance = 0.5);
+	if (Lookup(OpState("GuardedMove")) && Lookup(GroundFound)) {
+		GroundDetectionSuccess=true;
+		OpOutcome=OP_SUCCESS;
+		log_info ("[GuardedMove Operation] Detected ground position: ", Lookup(GroundPosition));
+	}
+	else {
+		OpOutcome=OP_FAILURE;
+	}
+
+	Update checkpoint_type="Operation", checkpoint_name="GuardedMove", checkpoint_status=OpOutcome;
+	log_info ("[GuardedMove Operation] ", OpOutcome);
+
+	if (GroundDetectionSuccess) {
+		Update checkpoint_type="Operation", checkpoint_name="Grind", checkpoint_status=OP_STARTED;
+		log_info ("[Grind Operation] Start: grinding at the location (x=1.49,y=0.6)");
+
+		LibraryCall Grind (
+			X = 1.49, Y = 0.6,
+			Depth = 0.1, Length = 0.3,
+			GroundPos = Lookup(GroundPosition),
+			Parallel = true);
+		if (Lookup(OpState("Grind"))) {
+			DiggingSuccess=true;
+			OpOutcome=OP_SUCCESS;
+		}
+		else {
+			OpOutcome=OP_FAILURE;
+		}
+
+		Update checkpoint_type="Operation", checkpoint_name="Grind", checkpoint_status=OpOutcome;
+		log_info ("[Grind Operation] ", OpOutcome);
+
+		if (DiggingSuccess) {
+			Update checkpoint_type="Operation", checkpoint_name="TailingRemoval", checkpoint_status=OP_STARTED;
+			log_info ("[TailingRemoval Operation] Start: remove from the depth of 0.1 meters in the trench location (x=1.49,y=0.6) to the dump location (x=1.91,y=0.4,z=1.91)");
+
+			LibraryCall DigCircular (
+				X = 1.49, Y = 0.6, Depth = 0.1,
+				GroundPos = Lookup(GroundPosition),
+				Parallel = true);
+			LibraryCall Discard (X = 1.91, Y = 0.4, Z = 0.02);
+			if (Lookup(OpState("DigCircular")) && Lookup(OpState("Discard"))) {
+				TrenchReady=true;
+				OpOutcome=OP_SUCCESS;
+			}
+			else {
+				OpOutcome=OP_FAILURE;
+			}
+
+			Update checkpoint_type="Operation", checkpoint_name="TailingRemoval", checkpoint_status=OpOutcome;
+			log_info ("[TailingRemoval Operation] ", OpOutcome);
+
+		}
+
+	}
+
+	if (TrenchReady) {
+		PlanStatus=PLAN_SUCCESS;
+	}
+	else {
+		PlanStatus=PLAN_FAILURE;
+	}
+
+	Update checkpoint_type="Plan", checkpoint_name="ExcavationPlan1.plx", checkpoint_status=PlanStatus;
+	log_info ("[ExcavationPlan1.plx] Finish");
+}
