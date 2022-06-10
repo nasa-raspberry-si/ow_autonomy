@@ -6,6 +6,8 @@
 #include "OwInterface.h"
 #include "subscriber.h"
 #include "joint_support.h"
+#include <ow_plexil/CurrentOperation.h>
+#include <ow_plexil/CurrentPlan.h>
 
 // OW - external
 #include <ow_lander/Light.h>
@@ -14,6 +16,7 @@
 #include <std_msgs/Float64.h>
 #include <std_msgs/Int16.h>
 #include <std_msgs/Empty.h>
+#include <std_msgs/Bool.h>
 
 // C++
 #include <set>
@@ -378,6 +381,18 @@ static void temperature_callback (const std_msgs::Float64::ConstPtr& msg)
 }
 
 
+///////////////////////// Autonomy Request Support /////////////////////////////////////
+
+// A value of true indicates the autonomy wants to terminate the plan.
+// So, set the initial value to false
+static bool TerminatePlan = false; 
+
+static void terminatePlan_callback(const std_msgs::Bool::ConstPtr& msg)
+{
+  TerminatePlan = msg->data;
+  publish ("TerminatePlan", TerminatePlan);
+}
+
 //////////////////// GuardedMove Action support ////////////////////////////////
 
 // TODO: encapsulate GroundFound and GroundPosition in the PLEXIL command.  They
@@ -399,6 +414,74 @@ double OwInterface::groundPosition () const
 {
   return GroundPosition;
 }
+
+// Propogate the status of Grind, DigCircular and Deliver operations back to
+// the PLEXIL plan through the corresponding Lookups. (Similar to GuardedMove)
+// Use Case: when one of the above operation is conducting, if an arm fault is
+// injected, the operation (the ROS action) will end in the "ABORTED" state.
+// While currently there is no way to use the status signal in the PLEXIL plan.
+static bool GrindSuccess = false;
+static bool DigCircularSuccess = false;
+static bool DeliverSuccess = false;
+static bool GuardedMoveSuccess = false;
+
+bool OwInterface::opState (const string& opname) const
+{
+  if (opname == "Grind") {
+    ROS_INFO("Query state of Grind Op: %s", GrindSuccess?"success":"failure");
+	return GrindSuccess;
+  }
+  else if (opname == "DigCircular") {
+    ROS_INFO("Query state of DigCircular Op: %s", DigCircularSuccess?"success":"failure");
+	return DigCircularSuccess;
+  }
+  else if (opname == "Deliver") {
+    ROS_INFO("Query state of Deliver Op: %s", DeliverSuccess?"success":"failure");
+    return DeliverSuccess;
+  }
+  else if (opname == "GuardedMove") {
+    ROS_INFO("Query state of GuardedMove Op: %s", GuardedMoveSuccess?"success":"failure");
+    return GuardedMoveSuccess;
+  }
+  else {
+    return false;
+  }
+}
+
+bool static isOpSucceeded (const string& opstate)
+{
+  if (opstate == "SUCCEEDED")
+	return true;
+  else
+    return false;
+}
+void static updateOpState (const string& opname, string opstate)
+{
+  if (opname == "Grind") {
+	GrindSuccess = isOpSucceeded(opstate);
+  }
+  else if (opname == "DigCircular") {
+	DigCircularSuccess = isOpSucceeded(opstate);
+  }
+  else if (opname == "Deliver") {
+    DeliverSuccess = isOpSucceeded(opstate);
+  }
+  else if (opname == "GuardedMove") {
+    GuardedMoveSuccess = isOpSucceeded(opstate);
+  }
+}
+
+template<typename T>
+static t_action_done_cb<T> excavation_actions_done_cb (const string& opname)
+{
+  return [&] (const actionlib::SimpleClientGoalState& state,
+              const T& result_ignored) {
+    ROS_INFO ("%s finished in state %s", opname.c_str(), state.toString().c_str());
+
+    updateOpState(opname, state.toString());
+  };
+}
+
 
 template <typename T>
 bool OwInterface::faultActive (const T& fmap) const
@@ -439,6 +522,8 @@ static t_action_done_cb<T> guarded_move_done_cb (const string& opname)
     GroundPosition = result->final.z;
     publish ("GroundFound", GroundFound);
     publish ("GroundPosition", GroundPosition);
+
+	updateOpState(opname, state.toString());
   };
 }
 
@@ -508,6 +593,13 @@ void OwInterface::initialize()
     m_leftImageTriggerPublisher = make_unique<ros::Publisher>
       (m_genericNodeHandle->advertise<std_msgs::Empty>
        ("/StereoCamera/left/image_trigger", qsize, latch));
+    m_plexilPlanStatusPublisher = make_unique<ros::Publisher>
+      (m_genericNodeHandle->advertise<ow_plexil::CurrentPlan>
+       ("/CurrentPlan", qsize, latch));
+    m_plexilOperationStatusPublisher = make_unique<ros::Publisher>
+      (m_genericNodeHandle->advertise<ow_plexil::CurrentOperation>
+       ("/CurrentOperation", qsize, latch));
+
 
     // Initialize subscribers
     m_jointStatesSubscriber = make_unique<ros::Subscriber>
@@ -549,6 +641,11 @@ void OwInterface::initialize()
       (m_genericNodeHandle ->
        subscribe("/faults/pt_faults_status", qsize,
                 &OwInterface::antennaFaultCallback, this));
+    // subscriber for autonomy messages
+    m_batteryTempSubscriber = make_unique<ros::Subscriber>
+      (m_genericNodeHandle ->
+       subscribe("/autonomy/terminate_plan", qsize,
+                 terminatePlan_callback));
 
     m_guardedMoveClient =
       make_unique<GuardedMoveActionClient>(Op_GuardedMove, true);
@@ -660,7 +757,7 @@ void OwInterface::deliverAction (int id)
     (Op_Deliver, m_deliverClient, goal, id,
      default_action_active_cb (Op_Deliver),
      default_action_feedback_cb<DeliverFeedbackConstPtr> (Op_Deliver),
-     default_action_done_cb<DeliverResultConstPtr> (Op_Deliver));
+     excavation_actions_done_cb<DeliverResultConstPtr> (Op_Deliver));
 }
 
 void OwInterface::discardAction (double x, double y, double z, int id)
@@ -749,7 +846,7 @@ void OwInterface::digCircularAction (double x, double y, double depth,
     (Op_DigCircular, m_digCircularClient, goal, id,
      default_action_active_cb (Op_DigCircular),
      default_action_feedback_cb<DigCircularFeedbackConstPtr> (Op_DigCircular),
-     default_action_done_cb<DigCircularResultConstPtr> (Op_DigCircular));
+     excavation_actions_done_cb<DigCircularResultConstPtr> (Op_DigCircular));
 }
 
 
@@ -828,7 +925,7 @@ void OwInterface::grindAction (double x, double y, double depth, double length,
     (Op_Grind, m_grindClient, goal, id,
      default_action_active_cb (Op_Grind),
      default_action_feedback_cb<GrindFeedbackConstPtr> (Op_Grind),
-     default_action_done_cb<GrindResultConstPtr> (Op_Grind));
+     excavation_actions_done_cb<GrindResultConstPtr> (Op_Grind));
 }
 
 void OwInterface::guardedMove (double x, double y, double z,
@@ -981,4 +1078,34 @@ bool OwInterface::softTorqueLimitReached (const string& joint_name) const
 {
   return (JointsAtSoftTorqueLimit.find (joint_name) !=
           JointsAtSoftTorqueLimit.end());
+}
+
+bool OwInterface::terminatePlan () const
+{
+  return TerminatePlan;
+}
+
+
+// Support PLEXIL Update node to pass messages from PLEXIL executive to autonomy
+void OwInterface::updateCheckpointStatus(std::string& cp_type, std::string& cp_name, std::string& cp_status)
+{
+  if (cp_type == "Operation") {
+    ow_plexil::CurrentOperation msg;
+    msg.op_name = cp_name;
+    msg.op_status = cp_status;
+    ROS_INFO ("Communicate to the autonomy the status of the operation (%s): %s",
+                 cp_name.c_str(),
+                 cp_status.c_str());
+    m_plexilOperationStatusPublisher->publish (msg);
+  } else if (cp_type == "Plan") {
+    ow_plexil::CurrentPlan msg;
+    msg.plan_name = cp_name;
+    msg.plan_status = cp_status;
+    ROS_INFO ("Communicate to the autonomy the status of the plan (%s): %s",
+                 cp_name.c_str(),
+                 cp_status.c_str());
+    m_plexilPlanStatusPublisher->publish (msg);
+  } else {
+    ROS_INFO ("Unsupported checkpoint type: %s", cp_type.c_str());
+  }
 }

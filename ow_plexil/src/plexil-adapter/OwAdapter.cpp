@@ -31,6 +31,8 @@ using std::vector;
 using std::unique_ptr;
 
 
+typedef SimpleMap<std::string, Value> PairValueMap;
+
 //////////////////////// PLEXIL Lookup Support //////////////////////////////
 
 static void stubbed_lookup (const string& name, const string& value)
@@ -118,6 +120,11 @@ static bool lookup (const string& state_name,
   else if (state_name == "GroundPosition") {
     value_out = OwInterface::instance()->groundPosition();
   }
+  else if (state_name == "OpState") {
+    string opname;
+    args[0].getValue(opname);
+    value_out = OwInterface::instance()->opState(opname);
+  }
   // Faults
   else if (state_name == "SystemFault") {
     value_out = OwInterface::instance()->systemFault();
@@ -130,6 +137,10 @@ static bool lookup (const string& state_name,
   }
   else if (state_name == "PowerFault") {
     value_out = OwInterface::instance()->powerFault();
+  }
+  // Plan termination signal from autonomy
+  else if (state_name == "TerminatePlan") {
+    value_out = OwInterface::instance()->terminatePlan();
   }
   else retval = false;
 
@@ -339,6 +350,9 @@ bool OwAdapter::initialize()
   g_configuration->registerCommandHandler("take_picture", take_picture);
   g_configuration->registerCommandHandler("set_light_intensity",
                                           set_light_intensity);
+  
+  g_configuration->registerPlannerUpdateHandler(OwAdapter::planUpdate);
+
   OwInterface::instance()->setCommandStatusCallback (command_status_callback);
   debugMsg("OwAdapter", " initialized.");
   return true;
@@ -356,6 +370,28 @@ void OwAdapter::lookupNow (const State& state, StateCacheEntry& entry)
   }
   entry.update(retval);
 }
+
+void OwAdapter::planUpdate (PLEXIL::Update* update, PLEXIL::AdapterExecInterface* exec)
+{
+
+  const PairValueMap& current_checkpoint = update->getPairs();
+  string checkpoint_type;
+  string checkpoint_name;
+  string checkpoint_status;
+  current_checkpoint["checkpoint_type"].getValue(checkpoint_type);
+  current_checkpoint["checkpoint_name"].getValue(checkpoint_name);
+  current_checkpoint["checkpoint_status"].getValue(checkpoint_status);
+
+  debugMsg("[OwAdapter:planUpdate]", " Checkpoint: type (" << checkpoint_type << "), name (" << checkpoint_name << "), status (" << checkpoint_status << ")");
+  ROS_INFO("[OwAdapter:planUpdate] Checkpoint: type (%s), name (%s), status (%s)", checkpoint_type.c_str(), checkpoint_name.c_str(), checkpoint_status.c_str());
+
+  // Transition the Update node to be finished
+  exec->handleUpdateAck (update, true);
+
+  // Publish the status of an interesting point in the PLEXIL plan to a ROS topic
+  OwInterface::instance()->updateCheckpointStatus(checkpoint_type, checkpoint_name, checkpoint_status);
+}
+
 
 extern "C" {
   void initow_adapter() {

@@ -25,6 +25,9 @@ class OwExecutive
   bool initialize (const std::string& config_file);
   bool getPlanState(); // returns true if current plan is finished executing
   bool runPlan (const std::string& filename);
+
+  bool suspendExec();
+  bool resumeExec();
 };
 
 #endif

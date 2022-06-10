@@ -7,6 +7,7 @@
 
 #include <ros/ros.h>
 #include <ow_plexil/PlanSelection.h>
+#include <ow_plexil/CurrentPlan.h>
 
 class PlexilPlanSelection{
   public:
@@ -15,6 +16,16 @@ class PlexilPlanSelection{
     void initialize(std::string initial_plan);
     void start();
 
+    void setPlanTerminationSignal(bool value);
+    bool getPlanTerminationSignal();
+
+    void setCurrentPlanName(std::string value);
+    std::string getCurrentPlanName();
+
+    void setCurrentPlanStatus(std::string value);
+    std::string getCurrentPlanStatus();
+
+    void publishChangedPlexilPlanStatus(std::string new_status);
 
   private:
     PlexilPlanSelection(const PlexilPlanSelection&) = delete;
@@ -29,7 +40,16 @@ class PlexilPlanSelection{
     std::unique_ptr<ros::Publisher> m_planSelectionStatusPublisher;
     std::vector<std::string> plan_array;
     bool m_first_plan;
- 
+
+    // It indicates whether the current plan should be terminated or not
+    // It is just used to assist passing the plan termination signal from autonomy
+    std::unique_ptr<ros::Publisher> m_PlanTerminatePublisher;
+    bool m_terminate_plan = false;
+
+    std::string m_current_plan_name = "";
+    std::string m_current_plan_status = "";
+
+    std::unique_ptr<ros::Publisher> m_planStatusPublisher;
 };
 
 #endif
