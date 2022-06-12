@@ -3,7 +3,7 @@
 #include "plan-interface.h"
 
 
-ExcavationPlan1:
+TestExcavation:
 {
 	Boolean TrenchReady=false;
 	Boolean GroundDetectionSuccess=false;
@@ -13,10 +13,10 @@ ExcavationPlan1:
 	
 	ExitCondition Lookup(TerminatePlan);
 	
-	Update checkpoint_type="Plan", checkpoint_name="ExcavationPlan1.plx", checkpoint_status=PLAN_STARTED;
-	log_info ("[ExcavationPlan1.plx] Start");
+	Update checkpoint_type="Plan", checkpoint_name="TestExcavation.plx", checkpoint_status=PLAN_STARTED;
+	log_info ("[TestExcavation.plx] Start");
 
-	log_info ("{\"sel_xloc\": {\"sci_val\": 0.5327, \"position\": {\"y\": 0.6, \"x\": 1.49}, \"ex_prob\": 0.7836, \"name\": \"xloc1\"}, \"sel_dloc\": {\"position\": {\"y\": 0.4, \"x\": 1.91}, \"name\": \"dloc4\"}, \"task_name\": 1, \"node_name\": \"ExcavationPlan1\"}");
+	log_info ("{\"sel_xloc\": {\"sci_val\": 0.5327, \"position\": {\"y\": 0.6, \"x\": 1.49}, \"ex_prob\": 0.7836, \"name\": \"xloc1\"}, \"sel_dloc\": {\"position\": {\"y\": 0.4, \"x\": 1.91}, \"name\": \"dloc4\"}, \"task_name\": 1, \"node_name\": \"TestExcavation\"}");
 
 	log_info ("[Unstow] Start");
 	LibraryCall Unstow();
@@ -92,6 +92,6 @@ ExcavationPlan1:
 		PlanStatus=PLAN_FAILURE;
 	}
 
-	Update checkpoint_type="Plan", checkpoint_name="ExcavationPlan1.plx", checkpoint_status=PlanStatus;
-	log_info ("[ExcavationPlan1.plx] Finish");
+	Update checkpoint_type="Plan", checkpoint_name="TestExcavation.plx", checkpoint_status=PlanStatus;
+	log_info ("[TestExcavation.plx] Finish");
 }
