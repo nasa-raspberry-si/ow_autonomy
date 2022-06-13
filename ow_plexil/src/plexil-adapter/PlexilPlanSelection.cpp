@@ -8,6 +8,8 @@
 #include <std_msgs/String.h>
 #include <std_msgs/Bool.h>
 
+#include <ow_plexil/CurrentPlan.h>
+
 void PlexilPlanSelection::initialize(std::string initial_plan)
 {
   ROS_INFO("Starting PLEXIL executive node...");
@@ -52,7 +54,11 @@ void PlexilPlanSelection::initialize(std::string initial_plan)
       (m_genericNodeHandle->advertise<ow_plexil::CurrentPlan>
        ("/CurrentPlan", 20));
 
-
+  //initialize subscriber
+  m_planStatusSubscriber = std::make_unique<ros::Subscriber>
+      (m_genericNodeHandle ->
+       subscribe("/CurrentPlan", 20,
+	       &PlexilPlanSelection::currentPlanCallback, this));
 
   ROS_INFO("Executive node started, ready for PLEXIL plans.");
 }
@@ -102,6 +108,13 @@ void PlexilPlanSelection::publishChangedPlexilPlanStatus(std::string new_status)
   current_plan.plan_name = getCurrentPlanName();
   current_plan.plan_status = getCurrentPlanStatus();
   m_planStatusPublisher->publish(current_plan);
+}
+
+// To maintain the plan status changed by other componenets
+void PlexilPlanSelection::currentPlanCallback(const ow_plexil::CurrentPlan msg)
+{
+  setCurrentPlanName(msg.plan_name);
+  setCurrentPlanStatus(msg.plan_status);
 }
 
 void PlexilPlanSelection::waitForPlan(){
@@ -156,15 +169,14 @@ void PlexilPlanSelection::runCurrentPlan(){
       ROS_INFO ("Plan timed out, try again.");
       status.data = "FAILED:" + plan_array[0];
       m_planSelectionStatusPublisher->publish(status);
-
-	  publishChangedPlexilPlanStatus("Plan_Registration_Timeout");
+      publishChangedPlexilPlanStatus("Plan_Registration_Timeout");
     }
     //otherwise we set it as running
     else{
       status.data = "SUCCESS:" + plan_array[0];
       m_planSelectionStatusPublisher->publish(status);
 
-      publishChangedPlexilPlanStatus("Plan_Registration_Success");
+      //publishChangedPlexilPlanStatus("Plan_Registration_Success");
     }
   }
   //if error from run() we set as failed for GUI
@@ -196,10 +208,8 @@ bool PlexilPlanSelection::planSelectionServiceCallback(ow_plexil::PlanSelection:
     res.success = true;
 
     // some resets for member variables related to the current plan
-    publishChangedPlexilPlanStatus("");
-    setCurrentPlanStatus("");
     setCurrentPlanName("");
-
+    publishChangedPlexilPlanStatus("");
   }
   // if command is SUSPEND, suspend the plexil executive app.
   // The SUSPEND command's intent is to suspend the current executing plan

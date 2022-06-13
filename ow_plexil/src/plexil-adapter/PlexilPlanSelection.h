@@ -50,6 +50,8 @@ class PlexilPlanSelection{
     std::string m_current_plan_status = "";
 
     std::unique_ptr<ros::Publisher> m_planStatusPublisher;
+    std::unique_ptr<ros::Subscriber> m_planStatusSubscriber;
+    void currentPlanCallback(const ow_plexil::CurrentPlan msg);
 };
 
 #endif
