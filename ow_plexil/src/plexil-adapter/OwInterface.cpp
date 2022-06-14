@@ -1103,7 +1103,7 @@ void OwInterface::updateCheckpointStatus(std::string& cp_type, std::string& cp_n
     ow_plexil::CurrentOperation msg;
     msg.op_name = cp_name;
     msg.op_status = cp_status;
-    ROS_INFO ("Communicate to the autonomy the status of the Operation (%s): %s",
+    ROS_DEBUG ("Communicate to the autonomy the status of the Operation (%s): %s",
                  cp_name.c_str(),
                  cp_status.c_str());
     m_plexilOperationStatusPublisher->publish (msg);
@@ -1111,11 +1111,11 @@ void OwInterface::updateCheckpointStatus(std::string& cp_type, std::string& cp_n
     ow_plexil::CurrentPlan msg;
     msg.plan_name = cp_name;
     msg.plan_status = cp_status;
-    ROS_INFO ("Communicate to the autonomy the status of the Plan (%s): %s",
+    ROS_DEBUG ("Communicate to the autonomy the status of the Plan (%s): %s",
                  cp_name.c_str(),
                  cp_status.c_str());
     m_plexilPlanStatusPublisher->publish (msg);
   } else {
-    ROS_INFO ("Unsupported checkpoint type: %s", cp_type.c_str());
+    ROS_ERROR ("Unsupported checkpoint type: %s", cp_type.c_str());
   }
 }
